@@ -1,0 +1,22 @@
+:root {
+    --color-primary: #0078ff;
+    --color-primary-hover: #3399ff;
+    --color-primary-active: #005fcc;
+
+    --color-secondary: #ff6600;
+    --color-secondary-hover: ;
+    --color-secondary-active: ;
+
+    --color-surface-0: #ececec; /* Page background */
+    --color-surface-1: #f6f6f6; /* Main UI surfaces (nav, cards) */
+    --color-surface-2: #ffffff; /* Floating elements */
+
+    --color-border: #ccc;
+
+    --color-text-primary: #111;
+    --color-text-secondary: #555;
+    --color-text-disabled: #999;
+    --color-text-link: #0078ff;
+
+    --animation-delay: 500ms;
+}

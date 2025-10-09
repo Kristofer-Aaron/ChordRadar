@@ -1,0 +1,25 @@
+/* Themes.css */
+
+:root[data-theme='light'] {
+    --color-surface-0: #ececec; /* Page background */
+    --color-surface-1: #f6f6f6; /* Main UI surfaces (nav, cards) */
+    --color-surface-2: #ffffff; /* Floating elements */
+
+    --color-border: #ccc;
+
+    --color-text-primary: #111;
+    --color-text-secondary: #555;
+    --color-text-disabled: #999;
+}
+
+:root[data-theme='dark'] {
+    --color-surface-0: #333; /* Page background */
+    --color-surface-1: #444; /* Main UI surfaces (nav, cards) */
+    --color-surface-2: #555; /* Floating elements */
+
+    --color-border: #666;
+
+    --color-text-primary: #eee;
+    --color-text-secondary: #bbb;
+    --color-text-disabled: #999;
+}
