@@ -12,11 +12,12 @@
         <?php require 'partials/navbar.html' ?> 
     </nav>
 
-    <div id="guitarNeck">
-
+    <div id="fretboardWrapper">
+        <div id="fretboardContainer"></div>
     </div>
 </body>
 
 <!-- <script src="assets/js/script.js"></script> -->
 <script src="assets/js/controls.js"></script>
+<script src="assets/js/fretboard.js"></script>
 </html>

@@ -1,36 +1,31 @@
-#guitarNeck {
+#fretboardContainer {
   margin: 0;
+  padding: 0;
   background-color: #373b42;
   overflow-x: auto;
   white-space: nowrap;
 }
 
+
 /*  */
 .fretboardColumn {
   display: inline-block;
-  height: 40px;
   margin: 0;
   padding: 0;
-}
-
-.fretboardTopNumberDiv {
-  display: inline-block;
 }
 
 /*  */
 .fretboardCell {
   display: block;
   width: 60px; /* fret width */
-  height: 100%;
+  height: 40px;
   position: relative;
   text-align: center;
   margin: 0;
   padding: 0;
-}
 
-.fret {
-  width: 8px;
-  height: 100%;
+  border: gray 1px solid;
+
 }
 
 /* Last table cell no border 
@@ -41,6 +36,8 @@
 /* Hide native radio button */
 .fretboardRadio {
   display: none;
+  margin: 0;
+  padding: 0;
 }
 
 /* Label of radio - used as a "button" for the hidden radio*/
@@ -48,16 +45,19 @@
   display: block;
   width: 100%;
   height: 100%;
-  margin: 0;
+  margin: auto;
   cursor: pointer;
 }
 
 /* Div inside of label, used as circle marker for checked radio*/
 .fretboardRadio + label div {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translateX(-50%) translateY(-50%);
   display: block;
   width: 24px;
   height: 24px;
-  margin: auto;
   border-radius: 50%;
   background-color: red;
   color: white;
@@ -68,7 +68,14 @@
   opacity: 0;
 }
 
+
+.fretboardRadio + label:hover div {
+  opacity: 1;
+  background-color: orange;
+}
+
 /* Circle marker show when selected */
 .fretboardRadio:checked + label div {
   opacity: 1;
+  background-color: red;
 }
