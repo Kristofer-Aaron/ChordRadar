@@ -58,7 +58,7 @@ export const ChordModel = {
     return { message: 'Chord deleted' };
   },
 
-   async partialUpdate(id, data) {
+   async patch(id, data) {
     // Get current chord
     const chord = await this.findById(id);
     if (!chord) throw new Error('Chord not found');
