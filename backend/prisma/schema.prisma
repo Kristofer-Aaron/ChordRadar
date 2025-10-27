@@ -4,6 +4,9 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// DATABASE_URL: mysql://chordRadar:admin@localhost:3306/chord_radar
+//
+
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
