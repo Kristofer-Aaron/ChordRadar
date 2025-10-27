@@ -1,10 +1,11 @@
 import app from './app.js';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
-import { expression } from 'joi';
+import pkg from 'joi';
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
+const { expression } = pkg;
 const prisma = new PrismaClient();
 
 app.use(expression.json);
