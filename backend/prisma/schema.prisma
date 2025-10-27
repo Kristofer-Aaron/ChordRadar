@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 // DATABASE_URL: mysql://chordRadar:admin@localhost:3306/chord_radar
-//
+// $ npx prisma migrate dev --name chord_radar
 
 generator client {
   provider = "prisma-client-js"
