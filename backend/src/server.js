@@ -1,10 +1,13 @@
 import app from './app.js';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+import { expression } from 'joi';
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 const prisma = new PrismaClient();
+
+app.use(expression.json);
 
 app.patch('/api/chords/:id', async (req, res) => {
   const id = parseInt(req.params.id)
