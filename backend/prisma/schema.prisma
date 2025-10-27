@@ -5,11 +5,32 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model chord {
+  id          Int    @id @default(autoincrement())
+  name        String
+  tuning_id   Int
+  tuning      tuning  @relation(fields: [tuning_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  grip_id     Int
+  grip        grip  @relation(fields: [grip_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+}
+
+model tuning {
+  id          Int    @id @default(autoincrement())
+  value       String
+  chords      chord[]
+}
+
+model grip {
+  id          Int    @id @default(autoincrement())
+  strings     String
+  chords      chord[]
 }
