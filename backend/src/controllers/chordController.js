@@ -3,26 +3,77 @@ import { ChordModel } from '../models/chordModel.js';
 import { chordSchema } from '../schemas/chordSchema.js';
 
 export const ChordController = {
-  async getAll(req, res) {
+  
+async getAll(req, res) {
+  try {
+    //localhost:3030/api/chords?fields={"tuning":"value","grip":"id"}
+    let fields = {};
     try {
-      const data = await ChordModel.findAll();
-      res.json(data);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+      fields = req.query.fields ? JSON.parse(req.query.fields) : {};
+    } catch {
+      fields = {};
     }
-  },
+
+    const tuningField = fields.tuning === 'value' ? 'tunings.value AS tuning' : 'tunings.id AS tuning_id';
+    const gripField = fields.grip === 'value' ? 'grips.strings AS grip' : 'grips.id AS grip_id';
+
+    const query = `
+      SELECT chords.id, chords.name, ${tuningField}, ${gripField}
+      FROM chords
+      JOIN tunings ON chords.tuning_id = tunings.id
+      JOIN grips ON chords.grip_id = grips.id
+    `;
+
+    const [rows] = await pool.query(query);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+},
+
 
   async getById(req, res) {
-    try {
-      const data = await ChordModel.findById(req.params.id);
-      if (!data) return res.status(404).json({ message: 'Chord not found' });
-      res.json(data);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  },
+  try {
+    const { id } = req.params;
 
-  
+    // Validate ID
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid ID format' });
+    }
+
+    // Parse fields from query
+    let fields = {};
+    try {
+      fields = req.query.fields ? JSON.parse(req.query.fields) : {};
+    } catch {
+      fields = {};
+    }
+
+    // Dynamic field selection
+    const tuningField = fields.tuning === 'value' ? 'tunings.value AS tuning' : 'tunings.id AS tuning_id';
+    const gripField = fields.grip === 'value' ? 'grips.strings AS grip' : 'grips.id AS grip_id';
+
+    // Build query
+    const query = `
+      SELECT chords.id, chords.name, ${tuningField}, ${gripField}
+      FROM chords
+      JOIN tunings ON chords.tuning_id = tunings.id
+      JOIN grips ON chords.grip_id = grips.id
+      WHERE chords.id = ?
+    `;
+
+    const [rows] = await pool.query(query, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Chord not found' });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error fetching chord by ID:', err);
+    res.status(500).json({ error: err.message });
+  }
+},
 
 async create(req, res) {
   const { name, tuning, grip } = req.body;
