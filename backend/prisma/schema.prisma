@@ -20,6 +20,9 @@ model Chord {
   grip_id       Int
   grip          Grip        @relation(fields: [grip_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
+  //Relation to user_chord_relations
+  users         UserChordRelation[]
+
   @@map("chords")
 }
 
@@ -68,6 +71,8 @@ model User {
   
   //Relation to user_tokens
   tokens              UserToken[]
+  //Relation to user_chord_relations
+  chords              UserChordRelation[]
 
   @@map("users")
 }
@@ -105,4 +110,14 @@ enum TokenType {
   email_verification
   password_reset
   api_access
+}
+
+model UserChordRelation {
+  user_id   Int
+  user      User  @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  chord_id  Int
+  chord     Chord @relation(fields: [chord_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([user_id, chord_id])
+  @@map("user_chord_relations")
 }
