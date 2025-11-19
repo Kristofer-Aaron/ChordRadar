@@ -12,7 +12,8 @@
     "generate": "npx prisma generate",
     "seed:chords": "node prisma/seeders/chordSeeder.js",
     "seed:users": "node prisma/seeders/testUserSeeder.js",
-    "db:setup": "npm run migrate && npm run generate && rpm run seed-chords"
+    "db:setup": "npm run migrate && npm run generate && rpm run seed-chords",
+    "db:backup": "node src/utils/dbBackup.js"
   },
   "author": "",
   "license": "ISC",
