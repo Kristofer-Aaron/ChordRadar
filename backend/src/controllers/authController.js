@@ -13,6 +13,13 @@ export const AuthController = {
 			const user = await UserModel.findByEmail(email_address);
 			if (!user) return res.status(404).json({ error: "User not found" });
 
+			// ✅ Check if user status is active
+			if (user.status !== "active") {
+				return res.status(403).json({
+					error: "Account is not active. Please verify your email or contact support.",
+				});
+			}
+
 			const validPassword = await bcrypt.compare(
 				password,
 				user.password_hash
@@ -25,7 +32,8 @@ export const AuthController = {
 				process.env.API_TOKEN_EXPIRATION,
 				10
 			);
-			// Invalidate all old tokens for this user
+
+			// Invalidate old tokens
 			await pool.query(
 				`DELETE FROM user_tokens WHERE user_id = ? AND type = 'api_access'`,
 				[user.id]

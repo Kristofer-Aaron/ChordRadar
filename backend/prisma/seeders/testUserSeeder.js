@@ -9,7 +9,7 @@ async function main() {
   const hashedAdminPassword = await bcrypt.hash("admin", 10);
 
   // Create a test user
-  const testUser = await prisma.users.create({
+  const testUser = await prisma.User.create({
     data: {
       user_name: "testuser",
       first_name: "Test",
@@ -33,7 +33,7 @@ async function main() {
     },
   });
 
-  const testAdmin = await prisma.users.create({
+  const testAdmin = await prisma.User.create({
     data: {
       user_name: "testadmin",
       first_name: "Test",
