@@ -31,3 +31,41 @@ model grips {
   strings     String    @unique   @db.VarChar(8)
   chords      chords[]
 }
+
+model users {
+  id                  Int      @id @default(autoincrement())
+  user_name           String   @db.VarChar(16)
+  first_name          String   @db.VarChar(16)
+  last_name           String   @db.VarChar(32)
+  email_address       String   @db.VarChar(255)
+  email_verified      Boolean  @default(false)
+  password_hash       String   @db.VarChar(255)
+  password_changed_at DateTime
+  two_factor_enabled  Boolean  @default(false)
+  two_factor_method   TwoFactorMethod?
+  two_factor_secret   String?  @db.VarChar(255)
+  two_factor_backup   Json?
+  role                Role     @default(user)
+  status              Status   @default(pending)
+  account_created_at  DateTime
+  last_login_at       DateTime
+  preferences         Json
+}
+
+
+enum TwoFactorMethod {
+  email
+  google_authenticator
+  microsoft_authenticator
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum Status {
+  active
+  pending
+  suspended
+}
