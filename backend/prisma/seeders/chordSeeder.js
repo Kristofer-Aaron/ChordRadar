@@ -6,10 +6,10 @@
  * - Running database with identical data structure
  */
 
-import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { PrismaClient } from "@prisma/client";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,12 +17,15 @@ const __dirname = path.dirname(__filename);
 const prisma = new PrismaClient();
 
 async function main() {
-  const filePath = path.join(__dirname, '../data', 'chords.txt');
-  const lines = fs.readFileSync(filePath, 'utf-8').split('\n').filter(Boolean).slice(2);
-
+  const filePath = path.join(__dirname, "../data", "chords.txt");
+  const lines = fs
+    .readFileSync(filePath, "utf-8")
+    .split("\n")
+    .filter(Boolean)
+    .slice(2);
 
   for (const line of lines) {
-    const [gripStr, tuningStr, chordName] = line.split('/');
+    const [gripStr, tuningStr, chordName] = line.split("/");
 
     //Validate data: check if type is string and the length doesn't exceed the maximum character limit
     if (!gripStr || !tuningStr || !chordName) {
@@ -85,7 +88,7 @@ async function main() {
     console.log(`Inserted chord: ${chordName}`);
   }
 
-  console.log('Seeding completed!');
+  console.log("Seeding completed!");
 }
 
 main()

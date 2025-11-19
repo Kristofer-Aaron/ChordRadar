@@ -1,5 +1,5 @@
-import Joi from 'joi';
+import Joi from "joi";
 
 export const gripSchema = Joi.object({
-  strings: Joi.string().required()
+	strings: Joi.string().required(),
 });

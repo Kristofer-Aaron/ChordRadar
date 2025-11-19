@@ -1,5 +1,5 @@
-import Joi from 'joi';
+import Joi from "joi";
 
 export const tuningSchema = Joi.object({
-  value: Joi.string().required()
+	value: Joi.string().required(),
 });
