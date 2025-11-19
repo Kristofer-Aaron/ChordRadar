@@ -1,15 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 // DATABASE_URL: mysql://chordRadar:admin@localhost:3306/chord_radar
 // $ npx prisma migrate dev --name chord_radar
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
 }
 
 datasource db {
@@ -17,23 +11,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model chord {
-  id          Int    @id @default(autoincrement())
-  name        String
+model chords {
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(16)
   tuning_id   Int
-  tuning      tuning  @relation(fields: [tuning_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  tunings      tunings  @relation(fields: [tuning_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
   grip_id     Int
-  grip        grip  @relation(fields: [grip_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  grips        grips  @relation(fields: [grip_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
 }
 
-model tuning {
-  id          Int    @id @default(autoincrement())
-  value       String
-  chords      chord[]
+model tunings {
+  id          Int     @id @default(autoincrement())
+  value       String  @unique   @db.VarChar(8)
+  chords      chords[]
 }
 
-model grip {
-  id          Int    @id @default(autoincrement())
-  strings     String
-  chords      chord[]
+model grips {
+  id          Int       @id @default(autoincrement())
+  strings     String    @unique   @db.VarChar(8)
+  chords      chords[]
 }
