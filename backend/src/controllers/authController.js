@@ -4,7 +4,8 @@ import bcrypt from 'bcrypt';
 import { UserModel } from '../models/userModel.js';
 
 export const AuthController = {
-  async login(req, res) {
+  
+async login(req, res) {
   const { email_address, password } = req.body;
 
   try {
@@ -14,18 +15,24 @@ export const AuthController = {
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // Generate JWT
+    const now = new Date();
+    const tokenExpiration = parseInt(process.env.API_TOKEN_EXPIRATION, 10);
+    // Invalidate all old tokens for this user
+    await pool.query(
+      `DELETE FROM user_tokens WHERE user_id = ? AND type = 'api_access'`,
+      [user.id]
+    );
+
+    // Generate new token
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: `${tokenExpiration}s` }
     );
 
-    // Calculate expiration date
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
+    const expiresAt = new Date(now.getTime() + tokenExpiration * 1000);
 
-    // Insert token into user_tokens table
+    // Insert new token
     await pool.query(
       `INSERT INTO user_tokens (user_id, token, type, created_at, expires_at)
        VALUES (?, ?, ?, ?, ?)`,
@@ -38,6 +45,7 @@ export const AuthController = {
     res.json({
       message: 'Login successful',
       token,
+      expires_at: expiresAt,
       user: {
         id: user.id,
         user_name: user.user_name,
@@ -50,9 +58,9 @@ export const AuthController = {
   }
 },
 
-async register (req, res) {
 
- try {
+async register(req, res) {
+  try {
     const {
       user_name,
       first_name,
@@ -107,12 +115,24 @@ async register (req, res) {
 
     const userId = result.insertId;
 
-    // Generate JWT token
-    const token = jwt.sign({ id: userId, role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Generate email verification token
+    const emailTokenExpiration = parseInt(process.env.EMAIL_TOKEN_EXPIRATION, 10); // seconds
+    const emailToken = crypto.randomBytes(32).toString('hex'); // Secure random token
+    const expiresAt = new Date(Date.now() + emailTokenExpiration * 1000);
+
+    // Store token in user_tokens table
+    await pool.query(
+      `INSERT INTO user_tokens (user_id, token, type, created_at, expires_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [userId, emailToken, 'email_verification', now, expiresAt]
+    );
+
+    // Send email with verification link
+    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${emailToken}`;
+    await sendEmail(email_address, 'Verify your email', `Click here to verify your account: ${verificationLink}`);
 
     res.status(201).json({
-      message: 'User registered successfully',
-      token,
+      message: 'User registered successfully. Please check your email to verify your account.',
       user: {
         id: userId,
         user_name,
@@ -127,7 +147,46 @@ async register (req, res) {
     console.error(err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
+},
 
+async verifyEmail(req, res) {
+  const { token } = req.query;
+
+  try {
+    // Find token in user_tokens
+    const [rows] = await pool.query(
+      `SELECT user_id, expires_at FROM user_tokens WHERE token = ? AND type = 'email_verification'`,
+      [token]
+    );
+
+    if (rows.length === 0) return res.status(400).json({ message: 'Invalid or expired token' });
+
+    const { user_id, expires_at } = rows[0];
+    if (new Date() > expires_at) {
+      return res.status(400).json({ message: 'Token expired' });
+    }
+
+    // Update user email_verified and status
+    await pool.query(`UPDATE users SET email_verified = 1, status = 'active' WHERE id = ?`, [user_id]);
+
+    // Delete email verification token
+    await pool.query(`DELETE FROM user_tokens WHERE token = ?`, [token]);
+
+    // Generate API token after verification
+    const apiTokenExpiration = parseInt(process.env.API_TOKEN_EXPIRATION, 10); // seconds
+    const apiToken = jwt.sign({ id: user_id }, process.env.JWT_SECRET, { expiresIn: `${apiTokenExpiration}s` });
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + apiTokenExpiration * 1000);
+
+    await pool.query(
+      `INSERT INTO user_tokens (user_id, token, type, created_at, expires_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [user_id, apiToken, 'api_access', now, expiresAt]
+    );
+
+    res.json({ message: 'Email verified successfully', token: apiToken });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
-
 } 
