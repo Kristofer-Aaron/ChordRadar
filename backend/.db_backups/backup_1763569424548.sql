@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS `user_tokens` (
   PRIMARY KEY (`id`),
   KEY `user_tokens_user_id_fkey` (`user_id`),
   CONSTRAINT `user_tokens_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE = InnoDB AUTO_INCREMENT = 2 DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 # ------------------------------------------------------------
 # SCHEMA DUMP FOR TABLE: users
@@ -304,10 +304,6 @@ VALUES
 INSERT INTO
   `chords` (`id`, `tuning_id`, `grip_id`, `notation_id`)
 VALUES
-  (18, 2, 18, 17);
-INSERT INTO
-  `chords` (`id`, `tuning_id`, `grip_id`, `notation_id`)
-VALUES
   (19, 2, 19, 18);
 
 # ------------------------------------------------------------
@@ -501,12 +497,30 @@ INSERT INTO
   )
 VALUES
   (
-    1,
-    1,
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6InVzZXIiLCJpYXQiOjE3NjM1Njc4ODgsImV4cCI6MTc2MzU3MTQ4OH0.hlpdI8_O2Zwc8hMry32FwQOEH2eGPnseNWyj1MI86nU',
+    2,
+    2,
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzYzNTY4OTA5LCJleHAiOjE3NjM1NzI1MDl9.KEhnhVfLi-ltV1wxjaAT4E_aiwlH8SeCh4xyatwrm3U',
     'api_access',
-    '2025-11-19 16:58:08.753',
-    '2025-11-19 17:58:08.753'
+    '2025-11-19 17:15:09.062',
+    '2025-11-19 18:15:09.062'
+  );
+INSERT INTO
+  `user_tokens` (
+    `id`,
+    `user_id`,
+    `token`,
+    `type`,
+    `created_at`,
+    `expires_at`
+  )
+VALUES
+  (
+    4,
+    1,
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6InVzZXIiLCJpYXQiOjE3NjM1NjkyNjAsImV4cCI6MTc2MzU3Mjg2MH0._ZO6LdifvBv7QqLLiYr4eh7MnEcLVUP1sBLOHZH29wo',
+    'api_access',
+    '2025-11-19 17:21:00.915',
+    '2025-11-19 18:21:00.915'
   );
 
 # ------------------------------------------------------------
@@ -550,7 +564,7 @@ VALUES
     'user',
     'active',
     '2025-11-19 15:56:21.787',
-    '2025-11-19 16:58:08.753',
+    '2025-11-19 17:21:00.915',
     '{\"theme\":\"dark\",\"notifications\":true}'
   );
 INSERT INTO
@@ -590,7 +604,7 @@ VALUES
     'admin',
     'active',
     '2025-11-19 15:56:21.811',
-    '2025-11-19 15:56:21.811',
+    '2025-11-19 17:15:09.062',
     '{\"theme\":\"dark\",\"notifications\":true}'
   );
 
