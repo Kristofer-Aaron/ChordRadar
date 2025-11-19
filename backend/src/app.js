@@ -19,6 +19,6 @@ app.use('/api/chords', chordRoutes);
 app.use('/api/tunings', tuningRoutes);
 app.use('/api/grips', gripRoutes);
 app.use('/auth', authRoutes);
-app.use('/api/users', userRoutes);
+app.use('/users', userRoutes);
 
 export default app;
