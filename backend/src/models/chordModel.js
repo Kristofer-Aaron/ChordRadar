@@ -2,12 +2,12 @@ import pool from '../config/db.js';
 
 export const ChordModel = {
   async findAll() {
-    const [rows] = await pool.query('SELECT * FROM chord');
+    const [rows] = await pool.query('SELECT * FROM chords');
     return rows;
   },
 
   async findById(id) {
-    const [rows] = await pool.query('SELECT * FROM chord WHERE id = ?', [id]);
+    const [rows] = await pool.query('SELECT * FROM chords WHERE id = ?', [id]);
     return rows[0];
   },
 
@@ -15,7 +15,7 @@ export const ChordModel = {
     const { name, tuning_id, grip_id } = data;
 
     const [existing] = await pool.query(
-        'SELECT * FROM chord WHERE name = ? AND tuning_id = ? AND grip_id = ?',
+        'SELECT * FROM chords WHERE name = ? AND tuning_id = ? AND grip_id = ?',
         [name, tuning_id, grip_id]
     );
 
@@ -26,7 +26,7 @@ export const ChordModel = {
     }
 
     const [result] = await pool.query(
-      'INSERT INTO chord (name, tuning_id, grip_id) VALUES (?, ?, ?)',
+      'INSERT INTO chords (name, tuning_id, grip_id) VALUES (?, ?, ?)',
       [name, tuning_id, grip_id]
     );
     return { id: result.insertId, ...data };
@@ -36,7 +36,7 @@ export const ChordModel = {
     const { name, tuning_id, grip_id } = data;
 
     const [existing] = await pool.query(
-        'SELECT * FROM chord WHERE name = ? AND tuning_id = ? AND grip_id = ? AND id != ?',
+        'SELECT * FROM chords WHERE name = ? AND tuning_id = ? AND grip_id = ? AND id != ?',
         [name, tuning_id, grip_id, id]
         );
 
@@ -47,14 +47,14 @@ export const ChordModel = {
     }
 
     await pool.query(
-      'UPDATE chord SET name = ?, tuning_id = ?, grip_id = ? WHERE id = ?',
+      'UPDATE chords SET name = ?, tuning_id = ?, grip_id = ? WHERE id = ?',
       [name, tuning_id, grip_id, id]
     );
     return this.findById(id);
   },
 
   async remove(id) {
-    await pool.query('DELETE FROM chord WHERE id = ?', [id]);
+    await pool.query('DELETE FROM chords WHERE id = ?', [id]);
     return { message: 'Chord deleted' };
   },
 
@@ -71,7 +71,7 @@ export const ChordModel = {
     };
 
     const [existing] = await pool.query(
-      'SELECT * FROM chord WHERE name = ? AND tuning_id = ? AND grip_id = ? AND id != ?',
+      'SELECT * FROM chords WHERE name = ? AND tuning_id = ? AND grip_id = ? AND id != ?',
       [updated.name, updated.tuning_id, updated.grip_id, id]
     );
 
@@ -82,7 +82,7 @@ export const ChordModel = {
     }
 
     await pool.query(
-      'UPDATE chord SET name = ?, tuning_id = ?, grip_id = ? WHERE id = ?',
+      'UPDATE chords SET name = ?, tuning_id = ?, grip_id = ? WHERE id = ?',
       [updated.name, updated.tuning_id, updated.grip_id, id]
     );
 

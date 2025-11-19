@@ -3,8 +3,12 @@ import { chordSchema } from '../schemas/chordSchema.js';
 
 export const ChordController = {
   async getAll(req, res) {
-    const data = await ChordModel.findAll();
-    res.json(data);
+    try {
+      const data = await ChordModel.findAll();
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   },
 
   async getById(req, res) {
