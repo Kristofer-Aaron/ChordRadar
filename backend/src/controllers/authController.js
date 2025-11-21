@@ -7,13 +7,74 @@ import { sendEmail } from "../utils/sendEmail.js";
 
 export const AuthController = {
 	async login(req, res) {
-		const { email_address, password } = req.body;
+		const { email_address, password } = req.body || {};
+		const authHeader = req.get("authorization") || "";
+		const now = new Date();
 
 		try {
+			// ------------------------------------------------------------------
+			// 1) If the request already carries a valid token → treat as idempotent login
+			// ------------------------------------------------------------------
+			if (authHeader.startsWith("Bearer ")) {
+				const incomingToken = authHeader.slice(7);
+
+				try {
+					const payload = jwt.verify(
+						incomingToken,
+						process.env.JWT_SECRET
+					);
+
+					// Optional: confirm this token exists and is still active in DB
+					const [rows] = await pool.query(
+						`
+            SELECT user_id, token, expires_at
+            FROM user_tokens
+            WHERE token = ? AND type = 'api_access' AND expires_at > NOW()
+            LIMIT 1
+          `,
+						[incomingToken]
+					);
+
+					if (
+						rows &&
+						rows.length === 1 &&
+						rows[0].user_id === payload.id
+					) {
+						// Fetch minimal user information for the response (if available)
+						const user =
+							(UserModel.findById &&
+								(await UserModel.findById(payload.id))) ||
+							(email_address
+								? await UserModel.findByEmail(email_address)
+								: null);
+
+						return res.status(200).json({
+							message: "Already logged in",
+							token: incomingToken,
+							expires_at: rows[0].expires_at,
+							user: user
+								? {
+										id: user.id,
+										user_name: user.user_name,
+										email_address: user.email_address,
+										role: user.role,
+								  }
+								: { id: payload.id },
+						});
+					}
+					// If token verification fails or DB entry is missing, continue to normal login
+				} catch (_) {
+					// Invalid/expired token → fall through to normal login
+				}
+			}
+
+			// ------------------------------------------------------------------
+			// 2) Normal login flow (email + password)
+			// ------------------------------------------------------------------
 			const user = await UserModel.findByEmail(email_address);
 			if (!user) return res.status(404).json({ error: "User not found" });
 
-			// ✅ Check if user status is active
+			// ✅ Ensure user is active
 			if (user.status !== "active") {
 				return res.status(403).json({
 					error: "Account is not active. Please verify your email or contact support.",
@@ -27,41 +88,68 @@ export const AuthController = {
 			if (!validPassword)
 				return res.status(401).json({ error: "Invalid credentials" });
 
-			const now = new Date();
+			// ------------------------------------------------------------------
+			// 3) If an active session already exists → block with 409 (no reissue)
+			// ------------------------------------------------------------------
+			const [activeRows] = await pool.query(
+				`
+        SELECT token, created_at, expires_at
+        FROM user_tokens
+        WHERE user_id = ? AND type = 'api_access' AND expires_at > NOW()
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+				[user.id]
+			);
+
+			if (activeRows && activeRows.length > 0) {
+				return res.status(409).json({
+					error: "User already logged in",
+					code: "ALREADY_LOGGED_IN",
+					session: {
+						expires_at: activeRows[0].expires_at,
+					},
+				});
+			}
+
+			// ------------------------------------------------------------------
+			// 4) Issue new token
+			//    (invalidate any previous tokens, even expired ones, to keep table tidy)
+			// ------------------------------------------------------------------
 			const tokenExpiration = parseInt(
 				process.env.API_TOKEN_EXPIRATION,
 				10
 			);
+			const expiresAt = new Date(now.getTime() + tokenExpiration * 1000);
 
-			// Invalidate old tokens
 			await pool.query(
-				`DELETE FROM user_tokens WHERE user_id = ? AND type = 'api_access'`,
+				`
+        DELETE FROM user_tokens
+        WHERE user_id = ? AND type = 'api_access'
+      `,
 				[user.id]
 			);
 
-			// Generate new token
 			const token = jwt.sign(
 				{ id: user.id, role: user.role },
 				process.env.JWT_SECRET,
 				{ expiresIn: `${tokenExpiration}s` }
 			);
 
-			const expiresAt = new Date(now.getTime() + tokenExpiration * 1000);
-
-			// Insert new token
 			await pool.query(
-				`INSERT INTO user_tokens (user_id, token, type, created_at, expires_at)
-       VALUES (?, ?, ?, ?, ?)`,
-				[user.id, token, "api_access", now, expiresAt]
+				`
+        INSERT INTO user_tokens (user_id, token, type, created_at, expires_at)
+        VALUES (?, ?, 'api_access', ?, ?)
+      `,
+				[user.id, token, now, expiresAt]
 			);
 
-			// Update last login timestamp
 			await pool.query(
 				"UPDATE users SET last_login_at = ? WHERE id = ?",
 				[now, user.id]
 			);
 
-			res.json({
+			return res.json({
 				message: "Login successful",
 				token,
 				expires_at: expiresAt,
@@ -73,7 +161,46 @@ export const AuthController = {
 				},
 			});
 		} catch (err) {
-			res.status(500).json({ error: err.message });
+			return res.status(500).json({ error: err.message });
+		}
+	},
+
+	// Assumes: pool (MySQL), jwt, process.env.JWT_SECRET
+	async logout(req, res) {
+		const authHeader = req.get("authorization") || "";
+		if (!authHeader.startsWith("Bearer ")) {
+			return res
+				.status(401)
+				.json({ error: "Authorization token missing" });
+		}
+
+		const token = authHeader.slice(7);
+
+		try {
+			// Verify token signature (ensures it was issued by us)
+			const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+			// Delete only this token (logout current session)
+			const [result] = await pool.query(
+				`
+        DELETE FROM user_tokens
+        WHERE user_id = ? AND token = ? AND type = 'api_access'
+      `,
+				[payload.id, token]
+			);
+
+			if (result.affectedRows === 0) {
+				// Token may already be deleted/expired or not exist in DB
+				return res.status(404).json({
+					error: "Session not found or already logged out",
+					code: "SESSION_NOT_FOUND",
+				});
+			}
+
+			return res.status(200).json({ message: "Logout successful" });
+		} catch (err) {
+			// jwt.verify throws on invalid/expired tokens
+			return res.status(401).json({ error: "Invalid or expired token" });
 		}
 	},
 
