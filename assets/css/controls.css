@@ -53,3 +53,12 @@
 .dropdown.active .dropdown-content {
     display: block;
 }
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    width: 100vw;
+    height: 100vh;
+}
+

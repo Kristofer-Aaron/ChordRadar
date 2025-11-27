@@ -15,7 +15,13 @@
     <div id="fretboardWrapper">
         <div id="fretboardContainer"></div>
     </div>
+    
+    <footer>
+        <?php require 'partials/footer.html' ?>
+    </footer>
 </body>
+
+
 
 <!-- <script src="assets/js/script.js"></script> -->
 <script src="assets/js/controls.js"></script>
