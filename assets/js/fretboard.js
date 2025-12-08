@@ -1,7 +1,7 @@
-const tuning = ['E', 'A', 'D', 'G', 'B', 'E'];
+const Tuning = ['E', 'A', 'D', 'G', 'B', 'E'];
 
-const notesFlat = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-const notesSharp = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const NotesFlat = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+const NotesSharp = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 
 function generateFretboard(stringCount = 4, fretCount = 22) {
