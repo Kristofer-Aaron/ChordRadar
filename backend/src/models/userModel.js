@@ -1,6 +1,6 @@
 import pool from "../config/db.js";
 
-export const UserModel = {
+const UserModel = {
 	async findAll() {
 		const [rows] = await pool.query("SELECT * FROM users");
 		return rows;
@@ -68,6 +68,7 @@ export const UserModel = {
 			]
 		);
 
+
 		return { id: result.insertId, ...data };
 	},
 
@@ -84,8 +85,51 @@ export const UserModel = {
 		return this.findById(id);
 	},
 
+  async updatePartial(id, updates) {
+    if (!id || typeof id !== "number") {
+      throw new Error("Invalid user id");
+    }
+
+    const allowedCols = new Set([
+      "user_name", "first_name", "last_name", "email_address",
+      "email_verified", "password_hash", "password_changed_at",
+      "preferences",
+      "two_factor_enabled", "two_factor_method", "two_factor_secret", "two_factor_backup",
+      "role", "status"
+    ]);
+
+    const setFragments = [];
+    const params = [];
+    for (const [col, val] of Object.entries(updates)) {
+      if (!allowedCols.has(col)) {
+        throw new Error(`Column '${col}' is not allowed for partial update`);
+      }
+      setFragments.push(`${col} = ?`);
+      params.push(val);
+    }
+
+    if (setFragments.length === 0) {
+      return null; // nothing to update
+    }
+    params.push(id);
+
+    await pool.query(
+      `UPDATE users SET ${setFragments.join(", ")} WHERE id = ?`,
+      params
+    );
+
+    const [rows] = await pool.query(
+      "SELECT id, user_name, first_name, last_name, email_address, role, status, email_verified, two_factor_enabled FROM users WHERE id = ?",
+      [id]
+    );
+    return rows[0] || null;
+  },
+
+
 	async remove(id) {
 		await pool.query("DELETE FROM users WHERE id = ?", [id]);
 		return { message: "User deleted" };
 	},
 };
+
+export default UserModel;
