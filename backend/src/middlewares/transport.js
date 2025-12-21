@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import cors from 'cors';
 
 const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -13,86 +15,96 @@ export const corsStrict = cors({
 });
 
 
-// src/middlewares/normalizePatchFields.js
-export function normalizePatchFields(req, res, next) {
-  const b = req.validated || req.body || {};
-  const updates = {};
-  const now = new Date();
+// middleware/normalizeUserPatchFields.js
+import bcrypt from 'bcrypt';
 
-  // basic fields
-  for (const k of ["user_name", "first_name", "last_name"]) {
-    if (k in b) updates[k] = String(b[k]).trim();
-  }
-
-  // email
-  if ("email_address" in b) {
-    updates.email_address = String(b.email_address).trim().toLowerCase();
-  }
-
-  // password (already hashed in hashPasswordIfPresent)
-  if ("password_hash" in b) {
-    updates.password_hash = b.password_hash;
-    updates.password_changed_at = b.password_changed_at ?? now;
-  }
-
-  // preferences → JSON string
-  if ("preferences" in b) {
+export function normalizeUserPatchFields() {
+  return async (req, res, next) => {
     try {
-      const jsonStr = typeof b.preferences === "string"
-        ? b.preferences
-        : JSON.stringify(b.preferences ?? {});
-      JSON.parse(jsonStr); // validate
-      updates.preferences = jsonStr;
-    } catch {
-      return res.status(400).json({ error: "preferences must be valid JSON" });
+      const isAdmin = String(req.user?.role || '').toLowerCase() === 'admin';
+      const input = req.validated ?? req.body ?? {};
+      const updates = {};
+
+      // Whitelist (generally patchable by *any* user)
+      const commonFields = [
+        'user_name',
+        'first_name',
+        'last_name',
+        'email_address',
+        'two_factor_enabled',
+        'preferences',
+        // 'password' – handled specially below
+      ];
+
+      // Admin-only fields
+      const adminOnly = ['email_verified', 'role', 'status'];
+
+      // 1) Check admin-only constraints
+      if (!isAdmin) {
+        const attemptedRestricted = adminOnly.filter((k) => k in input);
+        if (attemptedRestricted.length) {
+          return res.status(403).json({
+            error: 'Forbidden',
+            details: `Non-admin cannot modify: ${attemptedRestricted.join(', ')}`
+          });
+        }
+      }
+
+      // 2) Copy common fields if present
+      for (const key of commonFields) {
+        if (key in input) {
+          updates[key] = input[key];
+        }
+      }
+
+      // 3) Normalize email (if provided)
+      if ('email_address' in updates && typeof updates.email_address === 'string') {
+        updates.email_address = updates.email_address.trim().toLowerCase();
+      }
+
+      // 4) Preferences: allow object or string; ensure valid JSON; store as string
+      if ('preferences' in updates) {
+        const val = updates.preferences;
+        let prefsStr;
+        if (typeof val === 'string') {
+          prefsStr = val.trim();
+        } else {
+          prefsStr = JSON.stringify(val ?? {});
+        }
+        try {
+          JSON.parse(prefsStr);
+        } catch {
+          return res.status(400).json({ error: 'preferences must be valid JSON' });
+        }
+        updates.preferences = prefsStr;
+      }
+
+      // 5) two_factor_enabled: coerce to boolean (0/1 in DB later if needed)
+      if ('two_factor_enabled' in updates) {
+        updates.two_factor_enabled = updates.two_factor_enabled ? 1 : 0;
+      }
+
+      // 6) Password (optional): if provided, hash and set changed_at
+      if ('password' in input && input.password != null && String(input.password).length > 0) {
+        updates.password_hash = await bcrypt.hash(String(input.password), 10);
+        updates.password_changed_at = new Date();
+      }
+
+      // 7) Admin-only fields: pass through only for admin
+      if (isAdmin) {
+        for (const key of adminOnly) {
+          if (key in input) updates[key] = input[key];
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: 'No fields to update' });
+      }
+
+      req.updates = updates;
+      return next();
+    } catch (err) {
+      return next(err);
     }
-  }
-
-  // two_factor_enabled → 0/1
-  if ("two_factor_enabled" in b) {
-    const v = b.two_factor_enabled;
-    const flag = typeof v === "boolean" ? v : Number(v) === 1;
-    if (typeof v !== "boolean" && ![0, 1].includes(Number(v))) {
-      return res.status(400).json({ error: "two_factor_enabled must be boolean or 0/1" });
-    }
-    updates.two_factor_enabled = flag ? 1 : 0;
-
-    // Optional clearing secrets when disabling:
-    // if (!flag) {
-    //   updates.two_factor_method = null;
-    //   updates.two_factor_secret = null;
-    //   updates.two_factor_backup = JSON.stringify([]);
-    // }
-  }
-
-  // 2FA method/secret
-  if ("two_factor_method" in b) updates.two_factor_method = b.two_factor_method ?? null;
-  if ("two_factor_secret" in b) updates.two_factor_secret = b.two_factor_secret ?? null;
-
-  // 2FA backup → JSON string of array
-  if ("two_factor_backup" in b) {
-    try {
-      const jsonStr = typeof b.two_factor_backup === "string"
-        ? b.two_factor_backup
-        : JSON.stringify(b.two_factor_backup ?? []);
-      const parsed = JSON.parse(jsonStr);
-      if (!Array.isArray(parsed)) throw new Error();
-      updates.two_factor_backup = jsonStr;
-    } catch {
-      return res.status(400).json({ error: "two_factor_backup must be valid JSON array" });
-    }
-  }
-
-  // admin-only fields (already guarded)
-  for (const k of ["role", "status"]) {
-    if (k in b) updates[k] = b[k];
-  }
-  if ("email_verified" in b) {
-    const n = typeof b.email_verified === "boolean" ? (b.email_verified ? 1 : 0) : Number(b.email_verified);
-    if (![0, 1].includes(n)) return res.status(400).json({ error: "email_verified must be 0 or 1" });
-    updates.email_verified = n;
-  }
-
-  req.updates = updates;
-  next();
-};
+  };
+}

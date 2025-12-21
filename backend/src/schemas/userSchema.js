@@ -69,3 +69,22 @@ export const patchSchema = Joi.object({
   email_verified: Joi.alternatives().try(Joi.number().valid(0, 1), Joi.boolean())
 }).min(1) // at least one field
   .unknown(false); // reject unknown keys
+
+  
+// schemas/userSchemas.js
+export const patchUserSchema = {
+  // All fields optional (partial update)
+  optional: [
+    'user_name',
+    'first_name',
+    'last_name',
+    'email_address',
+    'two_factor_enabled',
+    'preferences',
+    'password',
+    // admin-only (middleware blocks for default users, but schema may still allow)
+    'email_verified',
+    'role',
+    'status'
+  ]
+};

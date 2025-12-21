@@ -1,18 +1,26 @@
+import dotenv from "dotenv";
+dotenv.config();
 import jwt from "jsonwebtoken";
 import pool from "../config/db.js";
 
-
 export function authenticate(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ['HS256'], // or ['RS256'] if using asymmetric keys
+      algorithms: ['HS256'],
+      clockTolerance: 5,
     });
-    next();
-  } catch {
-    return res.status(401).json({ error: "Invalid or expired token" });
+    return next();
+  } catch (err) {
+    console.error('[authenticate] verify failed:', err);
+    return res.status(401).json({
+      error: 'Invalid token',
+      code: err.name,
+      message: err.message,
+    });
   }
 }
 

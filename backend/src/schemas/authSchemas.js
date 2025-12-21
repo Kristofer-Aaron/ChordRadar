@@ -3,7 +3,7 @@ import Joi from 'joi';
 
 export const loginSchema = Joi.object({
   email_address: Joi.string().email().max(255).lowercase().required(),
-  password: Joi.string().min(5).required(),
+  password: Joi.string().min(8).required(),
 }).unknown(false);
 
 export const registerSchema = Joi.object({
@@ -11,7 +11,7 @@ export const registerSchema = Joi.object({
   first_name: Joi.string().trim().max(16).required(),
   last_name: Joi.string().trim().max(32).required(),
   email_address: Joi.string().email().max(255).lowercase().required(),
-  password: Joi.string().min(6).required(),
+  password: Joi.string().min(8).required(),
   preferences: Joi.alternatives().try(
     Joi.object().unknown(true),
     Joi.string().custom((v, helpers) => { try { JSON.parse(v); return v; } catch { return helpers.error('any.invalid'); } })

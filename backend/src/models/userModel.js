@@ -128,6 +128,7 @@ const UserModel = {
 
 	async remove(id) {
 		await pool.query("DELETE FROM users WHERE id = ?", [id]);
+		await pool.query("DELETE FROM user_tokens WHERE user_id = ?", [id]);
 		return { message: "User deleted" };
 	},
 };

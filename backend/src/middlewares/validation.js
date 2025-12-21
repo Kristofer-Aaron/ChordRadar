@@ -9,7 +9,7 @@ export function validateBody(schema) {
     req.validated = value; // or overwrite req.body = value
     next();
   };
-}
+};
 
 export function validateQuery(schema) {
   return (req, res, next) => {
@@ -18,7 +18,7 @@ export function validateQuery(schema) {
     req.validatedQuery = value;
     next();
   };
-}
+};
 
 
 // middlewares/validateEmailParam.js
@@ -30,12 +30,10 @@ export function validateEmailParam(param = 'email') {
     req.params[param] = raw;
     next();
   };
-}
+};
 
 
 // middlewares/ensureTargetUserExists.js
-
-
 export function ensureTargetUserExists(param = 'id') {
   return async (req, res, next) => {
     const id = Number(req.params[param]);
@@ -46,21 +44,82 @@ export function ensureTargetUserExists(param = 'id') {
     req.targetUser = user;
     next();
   };
+};
+
+export function ensureEmailUniqueFlexible(selParam = 'selector', valParam = 'value', field = 'email_address') {
+  return async (req, res, next) => {
+    try {
+      let email = req.updates?.[field] ?? req.validated?.[field] ?? req.body?.[field];
+      if (!email) return next();
+      email = String(email).trim().toLowerCase();
+
+      const existing = await UserModel.findByEmail(email);
+      if (!existing) return next();
+
+      // Determine target user id from selector (to allow keeping one's own email)
+      const selector = req.params?.[selParam];
+      const valueRaw = req.params?.[valParam];
+      if (!selector || typeof valueRaw === 'undefined') {
+        return res.status(400).json({ error: `Missing route params: ${selParam}/${valParam}` });
+      }
+
+      let targetUserId = null;
+      if (selector === 'id') {
+        targetUserId = String(valueRaw).trim();
+      } else if (selector === 'email') {
+        const targetEmail = String(valueRaw).trim().toLowerCase();
+        const targetUser = await UserModel.findByEmail(targetEmail);
+        targetUserId = targetUser ? String(targetUser.id) : null;
+      } else {
+        return res.status(400).json({ error: `Unsupported selector: ${selector}` });
+      }
+
+      if (!targetUserId || String(existing.id) !== targetUserId) {
+        return res.status(409).json({ error: 'Email already in use' });
+      }
+      return next();
+    } catch (err) {
+      return next(err);
+    }
+  };
 }
 
 
 export function ensureEmailUnique(field = 'email_address', idParam = 'id') {
   return async (req, res, next) => {
-    const email = req.validated?.[field] ?? req.body?.[field];
-    if (!email) {
-        return next();
+    try {
+      // Prefer validated body; fallback to raw body
+      let email = req.validated?.[field] ?? req.body?.[field];
+      if (!email) return next();
+
+      // Normalize email to lowercase for consistent matching
+      email = String(email).trim().toLowerCase();
+
+      const taken = await UserModel.findByEmail(email);
+      if (!taken) return next(); // nobody has this email → OK
+
+      // If the route has an id (e.g., PUT /users/:id), allow if it's the same user
+      const targetIdRaw = req.params?.[idParam];
+
+      // No id param (e.g., POST /register) → any existing email is a conflict
+      if (typeof targetIdRaw === 'undefined') {
+        return res.status(409).json({ error: 'Email already in use' });
+      }
+
+      // Compare as strings to handle numeric/UUID/ObjectId uniformly
+      const targetId = String(targetIdRaw);
+      const takenId  = String(taken.id);
+
+      if (takenId !== targetId) {
+        return res.status(409).json({ error: 'Email already in use' });
+      }
+
+      // Same user keeps same email → allowed
+      return next();
+    } catch (err) {
+      // Critical: pass async errors to Express’ error handler
+      return next(err);
     }
-    const targetId = Number(req.params[idParam]);
-    const taken = await UserModel.findByEmail(email);
-    if (taken && taken.id !== targetId) {
-      return res.status(409).json({ error: 'Email already in use' });
-    }
-    next();
   };
 }
 

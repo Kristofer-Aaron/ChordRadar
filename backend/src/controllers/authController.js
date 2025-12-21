@@ -129,8 +129,6 @@ async login(req, res) {
     }
   },
 
-
-
   async register(req, res) {
     try {
       const {
@@ -141,12 +139,6 @@ async login(req, res) {
         password,
         preferences,
       } = req.validated;
-
-      // Email uniqueness
-      const existing = await UserModel.findByEmail(email_address);
-      if (existing) {
-        return res.status(409).json({ message: "Email already registered" });
-      }
 
       const password_hash = await bcrypt.hash(password, 10);
       const now = new Date();
@@ -208,7 +200,7 @@ async login(req, res) {
         },
       });
     } catch (err) {
-      return res.status(500).json({ error: "Internal Server Error" });
+      return res.status(500).json({ error: err.message });
     }
   },
 
@@ -237,7 +229,7 @@ async login(req, res) {
 
       // Issue API token after verification
       const apiTokenExpiration = parseInt(process.env.API_TOKEN_EXPIRATION || "3600", 10);
-      const apiToken = jwt.sign({ id: user_id }, process.env.JWT_SECRET, {
+      const apiToken = jwt.sign({ id: user_id, role: 'user' }, process.env.JWT_SECRET, {
         expiresIn: `${apiTokenExpiration}s`,
       });
       const now = new Date();
