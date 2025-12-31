@@ -22,115 +22,23 @@ const UserModel = {
 	},
 
 	async create(data) {
-		const {
-			user_name,
-			first_name,
-			last_name,
-			email_address,
-			email_verified,
-			password_hash,
-			password_changed_at,
-			two_factor_enabled,
-			two_factor_method,
-			two_factor_secret,
-			two_factor_backup,
-			role,
-			status,
-			account_created_at,
-			last_login_at,
-			preferences,
-		} = data;
+		const now = new Date();
+		const { user_name, first_name, last_name, email_address, password_hash, password_changed_at, preferences, account_created_at=now, last_login_at=now, role='user', status='pending', email_verified='0' } = data;
 
 		const [result] = await pool.query(
-			`INSERT INTO users (
-        user_name, first_name, last_name, email_address, email_verified,
-        password_hash, password_changed_at, two_factor_enabled, two_factor_method,
-        two_factor_secret, two_factor_backup, role, status, account_created_at,
-        last_login_at, preferences
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			[
-				user_name,
-				first_name,
-				last_name,
-				email_address,
-				email_verified,
-				password_hash,
-				password_changed_at,
-				two_factor_enabled,
-				two_factor_method,
-				two_factor_secret,
-				JSON.stringify(two_factor_backup),
-				role,
-				status,
-				account_created_at,
-				last_login_at,
-				JSON.stringify(preferences),
-			]
+			`INSERT INTO users (user_name, first_name, last_name, email_address, password_hash, password_changed_at, account_created_at, last_login_at, preferences, role, status, email_verified)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			[ user_name, first_name, last_name, email_address, password_hash, password_changed_at, account_created_at, last_login_at, JSON.stringify(preferences), role, status, email_verified ]
 		);
-
 
 		return { id: result.insertId, ...data };
 	},
-
-	async update(id, data) {
-		const fields = Object.keys(data);
-		const values = Object.values(data);
-
-		const setClause = fields.map((field) => `${field} = ?`).join(", ");
-		await pool.query(`UPDATE users SET ${setClause} WHERE id = ?`, [
-			...values,
-			id,
-		]);
-
-		return this.findById(id);
-	},
-
-  async updatePartial(id, updates) {
-    if (!id || typeof id !== "number") {
-      throw new Error("Invalid user id");
-    }
-
-    const allowedCols = new Set([
-      "user_name", "first_name", "last_name", "email_address",
-      "email_verified", "password_hash", "password_changed_at",
-      "preferences",
-      "two_factor_enabled", "two_factor_method", "two_factor_secret", "two_factor_backup",
-      "role", "status"
-    ]);
-
-    const setFragments = [];
-    const params = [];
-    for (const [col, val] of Object.entries(updates)) {
-      if (!allowedCols.has(col)) {
-        throw new Error(`Column '${col}' is not allowed for partial update`);
-      }
-      setFragments.push(`${col} = ?`);
-      params.push(val);
-    }
-
-    if (setFragments.length === 0) {
-      return null; // nothing to update
-    }
-    params.push(id);
-
-    await pool.query(
-      `UPDATE users SET ${setFragments.join(", ")} WHERE id = ?`,
-      params
-    );
-
-    const [rows] = await pool.query(
-      "SELECT id, user_name, first_name, last_name, email_address, role, status, email_verified, two_factor_enabled FROM users WHERE id = ?",
-      [id]
-    );
-    return rows[0] || null;
-  },
-
 
 	async remove(id) {
 		await pool.query("DELETE FROM users WHERE id = ?", [id]);
 		await pool.query("DELETE FROM user_tokens WHERE user_id = ?", [id]);
 		return { message: "User deleted" };
-	},
+	}
 };
 
 export default UserModel;
