@@ -18,7 +18,8 @@ const app = express();
 const openapiSpec = YAML.load("./docs/openapi.yaml");
 
 app.use(cors());
-app.use(bodyParser.json());
+//app.use(bodyParser.json());
+app.use(express.json());
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 

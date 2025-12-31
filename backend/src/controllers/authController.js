@@ -5,61 +5,75 @@ import crypto from "crypto";
 import UserModel from "../models/userModel.js";
 import sendEmail from "../utils/sendEmail.js";
 import { TokenModel } from "../models/tokenModels.js";
+import { generateQrDataUrl } from "../utils/qrcode.js";
+import QRCode from 'qrcode';
+import { generateTotpSecret, buildOtpAuthUrl, verifyTotp, generateBackupCodes } from "../utils/totp.js";
 
 export const AuthController = {
 	
 async login(req, res) {
-    try {
-      const now = new Date();
-      const { email_address, password } = req.body;
-      const tokenExpiration = parseInt(process.env.API_TOKEN_EXPIRATION || "3600", 10);
+try {
+    const { email_address, password, twoFactorToken, backupCode } = req.body || {};
 
-      const user = await UserModel.findByEmail(email_address);
-      if (!user) return res.status(404).json({ error: "User not found" });
+    // 1) Load user by email
+    const user = await UserModel.findByEmail(email_address);
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    console.log(user.id);
 
-      if (user.status !== "active") {
-        return res.status(403).json({
-          error: "Account is not active. Please verify your email or contact support.",
-        });
-      }
-
-      //Check if given credentials are identical to the ones stored in the database
-      const ok = await bcrypt.compare(password, user.password_hash);
-      if (!ok) return res.status(401).json({ error: "Invalid credentials" });
-     
-      const activeRows = await TokenModel.findUserToken(user.id, 'api_access');
-      if (activeRows != null) {
-        return res.status(409).json({
-          error: "User already logged in",
-          code: "ALREADY_LOGGED_IN",
-          session: { expires_at: activeRows.expires_at },
-        });
-      }
-
-      //Delete expired access token(s)
-     await TokenModel.deleteUserToken(user.id, 'api_access');
-
-     //Create new access tokens for user
-     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-        expiresIn: `${tokenExpiration}s`,
-      });
-      const expiresAt = new Date(now.getTime() + tokenExpiration * 1000);
-     await TokenModel.insertUserToken(user.id, token, 'api_access', now, expiresAt);
-      await pool.query(`UPDATE users SET last_login_at = ? WHERE id = ?`, [now, user.id]);
-      return res.json({
-        message: "Login successful",
-        token,
-        expires_at: expiresAt,
-        user: {
-          id: user.id,
-          user_name: user.user_name,
-          email_address: user.email_address,
-          role: user.role,
-        },
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
+    const result = await TokenModel.findUserToken(user.id, 'api_access');
+    console.log(result);
+    if (result != null) {
+      return res.status(400).json({ error: 'Already logged in' });
     }
+
+    // 2) If a password was provided, validate it; otherwise skip
+    if (typeof password === 'string') {
+      // Defensive checks before bcrypt.compare
+      if (!user.password_hash || password.length === 0) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      const passwordOk = await bcrypt.compare(password, user.password_hash);
+      if (!passwordOk) return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // 3) If user has 2FA enabled, require a TOTP or a backup code
+    if (user.two_factor_enabled && password == null) {
+      const hasTotp = typeof twoFactorToken === 'string' && twoFactorToken.length > 0;
+      const hasBackup = typeof backupCode === 'string' && backupCode.length > 0;
+
+      if (!hasTotp && !hasBackup) {
+        return res.status(401).json({ error: 'Two-factor code required' });
+      }
+
+      // Prefer TOTP if provided
+      if (hasTotp) {
+        const ok = verifyTotp({ token: twoFactorToken, secret: user.two_factor_secret });
+        if (!ok) return res.status(401).json({ error: 'Invalid 2FA code' });
+      } else {
+        // Fallback: backup code
+        const backups = JSON.parse(user.two_factor_backup || '[]');
+        const idx = backups.findIndex(c => c === backupCode);
+        if (idx === -1) return res.status(401).json({ error: 'Invalid backup code' });
+        backups.splice(idx, 1); // consume
+        await UserModel.setBackupCodes(user.id, JSON.stringify(backups));
+      }
+    }
+
+    // 4) Issue JWT + api_access token (your existing flow)
+    const jwtPayload = { id: user.id, role: user.role };
+    const accessToken = jwt.sign(jwtPayload, process.env.JWT_SECRET, {
+      algorithm: 'HS256',
+      expiresIn: '1h',
+    });
+
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+    await TokenModel.insertUserToken(user.id, accessToken, 'api_access', new Date(Date.now()), expiresAt);
+
+    return res.status(200).json({ ok: true, token: accessToken });
+  } catch (err) {
+    console.error('[login] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
   },
 
   async logout(req, res) {
@@ -174,4 +188,189 @@ async login(req, res) {
       return res.status(500).json({ error: err.message });
     }
   },
+
+async twoFaEnroll(req, res) {
+  try {
+    const authUser = req.user;
+    console.log(req.user);
+
+    // Determine target user id:
+    // - Admins must specify an id (via route param, body, or query)
+    // - Non-admins always operate on themselves (req.user.id)
+    let targetId = null;
+
+    if (authUser?.role === 'admin') {
+      // Accept id from param, body, or query (choose any one source you prefer)
+      targetId = req.params?.id ?? req.body?.user_id ?? req.query?.user_id ?? null;
+      if (!targetId) {
+        return res.status(400).json({ error: 'Missing target user id for admin request' });
+      }
+    } else {
+      // Non-admin: always self
+      targetId = authUser?.id;
+      // Optional guard: if a non-admin tries to pass an id that differs from their own
+      const requestedId = req.params?.id ?? req.body?.user_id ?? req.query?.user_id;
+      if (requestedId && String(requestedId) !== String(targetId)) {
+        return res.status(403).json({ error: 'Forbidden: cannot enroll 2FA for another user' });
+      }
+    }
+
+    // Fetch target user
+    const user = await UserModel.findById(targetId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Generate TOTP secret + otpauth URL + QR
+    const secret = generateTotpSecret();
+    const issuer = process.env.APP_NAME || 'MyApp';
+    const label = user.email_address || user.user_name; // prefer email if present
+    const otpauthUrl = buildOtpAuthUrl({ secret, label, issuer });
+    const qrDataUrl = await generateQrDataUrl(otpauthUrl);
+
+    // Store the secret now, but keep 2FA disabled until the user confirms a valid code
+    const updated = await UserModel.updateTwoFactorSecret(targetId, secret);
+    if (!updated) {
+      return res.status(500).json({ error: 'Failed to set 2FA secret' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      method: 'google_authenticator',
+      qr: qrDataUrl,          // data:image/png;base64,...
+      otpauth_url: otpauthUrl,
+      message: 'Scan the QR code in your authenticator app and submit a code to confirm.'
+    });
+  } catch (err) {
+    console.error('[twoFaEnroll] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+},
+
+
+async getQrPng(req, res) {
+    try {
+      const authUserId = req.user?.id;
+      if (!authUserId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Load the caller's own record
+      const user = await UserModel.findById(authUserId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // The QR encodes the TOTP secret; only generate if a secret exists
+      const secret = user.two_factor_secret;
+      if (!secret) {
+        // You can return 404, or 409 (Conflict) if you want to signal "enrollment not started"
+        return res.status(404).json({ error: '2FA not enrolled for this user' });
+      }
+
+      const issuer = process.env.APP_NAME || 'MyApp';
+      const label = user.email_address || user.user_name || `user-${user.id}`;
+
+      // Build the otpauth URL that Google Authenticator & friends understand
+      const otpauthUrl = buildOtpAuthUrl({ secret, label, issuer });
+
+      // Render a PNG buffer
+      const pngBuffer = await QRCode.toBuffer(otpauthUrl, {
+        type: 'png',
+        margin: 2,
+        width: 320, // adjust to taste
+        color: { dark: '#000000', light: '#ffffff' }
+      });
+
+      // Security headers — this image embeds a secret
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Length', pngBuffer.length);
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.setHeader('Pragma', 'no-cache');
+
+      return res.status(200).send(pngBuffer);
+    } catch (err) {
+      console.error('[TwoFAController.getQrPng] error:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  },
+  
+
+async enrollConfirm(req, res) {
+  try {
+    const authUser = req.user;
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(400).json({ error: 'Missing token' });
+
+    // Resolve target user id:
+    // - Admin: must provide target id via param/body/query
+    // - Non-admin: always operate on self (ignore any provided id if different)
+    let targetId;
+
+    if (authUser?.role === 'admin') {
+      targetId = req.params?.id ?? req.body?.user_id ?? req.query?.user_id ?? null;
+      if (!targetId) {
+        return res.status(400).json({ error: 'Missing target user id for admin request' });
+      }
+    } else {
+      // Non-admins: enforce self
+      targetId = authUser?.id;
+      const requestedId = req.params?.id ?? req.body?.user_id ?? req.query?.user_id;
+      if (requestedId && String(requestedId) !== String(targetId)) {
+        return res.status(403).json({ error: 'Forbidden: cannot confirm 2FA for another user' });
+      }
+    }
+
+    // Load target user
+    const user = await UserModel.findById(targetId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Ensure secret exists (enrollment started)
+    const secret = user.two_factor_secret;
+    //console.log(user, user.two_factor_secret, req.body.token);
+    if (!secret) return res.status(400).json({ error: 'No 2FA secret to confirm' });
+
+    // Verify the 6-digit TOTP
+    const ok = verifyTotp({ token: req.body.token, secret });
+    if (!ok) return res.status(422).json({ error: 'Invalid 2FA code' });
+
+    // Enable 2FA and set method to google_authenticator if not already set
+    // (You may have set method during enrollStart; this is defensive)
+    const enabled = await UserModel.enableTwoFactor(targetId);
+    if (!enabled) return res.status(500).json({ error: 'Failed to enable 2FA' });
+
+    // Generate and persist backup codes (JSON)
+    const backups = generateBackupCodes();
+    const saved = await UserModel.setBackupCodes(targetId, JSON.stringify(backups));
+    if (!saved) return res.status(500).json({ error: 'Failed to store backup codes' });
+
+    // For security, only return backup codes to the owner (not to admins confirming for others)
+    const isSelf = String(authUser?.id) === String(targetId);
+    const response = {
+      ok: true,
+      message: 'Two-factor authentication enabled.'
+    };
+    if (isSelf) {
+      response.backup_codes = backups; // show once to the user themselves
+    }
+
+    return res.status(200).json(response);
+  } catch (err) {
+    console.error('[enrollConfirm] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+},
+
+  
+async twoFaDisable(req, res) {
+  const { id } = req.params;
+  const authUser = req.user;
+
+  if (String(authUser.id) !== String(id) && authUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  await UserModel.disableTwoFactor(id);
+  return res.status(200).json({ ok: true, message: 'Two-factor disabled.' });
+}
+
+
 };

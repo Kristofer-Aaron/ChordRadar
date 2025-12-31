@@ -38,7 +38,45 @@ const UserModel = {
 		await pool.query("DELETE FROM users WHERE id = ?", [id]);
 		await pool.query("DELETE FROM user_tokens WHERE user_id = ?", [id]);
 		return { message: "User deleted" };
-	}
+	},
+
+	
+async updateTwoFactorSecret(id, secret) {
+    const [res] = await pool.query(
+      `UPDATE users SET two_factor_secret = ?, two_factor_method = 'google_authenticator'
+       WHERE id = ?`,
+      [secret, id]
+    );
+    return res.affectedRows === 1;
+  },
+
+  async enableTwoFactor(id) {
+    const [res] = await pool.query(
+      `UPDATE users SET two_factor_enabled = 1 WHERE id = ?`,
+      [id]
+    );
+    return res.affectedRows === 1;
+  },
+
+  async disableTwoFactor(id) {
+    const [res] = await pool.query(
+      `UPDATE users
+       SET two_factor_enabled = 0, two_factor_method = NULL, two_factor_secret = NULL, two_factor_backup = JSON_ARRAY()
+       WHERE id = ?`,
+      [id]
+    );
+    return res.affectedRows === 1;
+  },
+
+  async setBackupCodes(id, codesJsonString) {
+    const [res] = await pool.query(
+      `UPDATE users SET two_factor_backup = ?
+       WHERE id = ?`,
+      [codesJsonString, id]
+    );
+    return res.affectedRows === 1;
+  }
+
 };
 
 export default UserModel;
