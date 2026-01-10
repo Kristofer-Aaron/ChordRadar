@@ -3,9 +3,13 @@ import Joi from 'joi';
 
 export const loginSchema = Joi.object({
   email_address: Joi.string().email().max(255).lowercase().required(),
-  password: Joi.string().min(8),
-  twoFactorToken: Joi.string().length(6).pattern(/^\d+$/)
-}).or('password', 'twoFactorToken').unknown(false);
+  password: Joi.string().min(8).required()
+});
+
+export const loginTotpSchema = Joi.object({
+  email_address: Joi.string().email().max(255).lowercase().required(),
+  totp_token: Joi.string().length(6).pattern(/^\d+$/).required()
+});
 
 export const registerSchema = Joi.object({
   user_name: Joi.string().trim().max(16).required(),

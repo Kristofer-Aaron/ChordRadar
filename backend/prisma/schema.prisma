@@ -79,8 +79,7 @@ model User {
 
 enum TwoFactorMethod {
   email
-  google_authenticator
-  microsoft_authenticator
+  totp
 }
 
 enum Role {

@@ -10,71 +10,123 @@ import QRCode from 'qrcode';
 import { generateTotpSecret, buildOtpAuthUrl, verifyTotp, generateBackupCodes } from "../utils/totp.js";
 
 export const AuthController = {
-	
+
+/**
+ * POST /auth/login/password
+ * Body: { email_address: string, password: string }
+ *
+ * Returns: { ok: true, token: string } on success.
+ * Errors use generic "Invalid credentials" to avoid leaking whether the email exists or not.
+ */
 async login(req, res) {
-try {
-    const { email_address, password, twoFactorToken, backupCode } = req.body || {};
+  try {
+    const { email_address, password } = req.body || {};
 
-    // 1) Load user by email
+    // 2) Load user by email (generic error if not found)
     const user = await UserModel.findByEmail(email_address);
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    console.log(user.id);
+    if (!user) {
+      // Avoid user enumeration
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-    const result = await TokenModel.findUserToken(user.id, 'api_access');
-    console.log(result);
-    if (result != null) {
+    // Optional: block re-login if you enforce single active session
+    // If you allow multiple sessions, you can remove this block.
+    const existing = await TokenModel.findUserToken(user.id, 'api_access');
+    if (existing) {
       return res.status(400).json({ error: 'Already logged in' });
     }
 
-    // 2) If a password was provided, validate it; otherwise skip
-    if (typeof password === 'string') {
-      // Defensive checks before bcrypt.compare
-      if (!user.password_hash || password.length === 0) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-      const passwordOk = await bcrypt.compare(password, user.password_hash);
-      if (!passwordOk) return res.status(401).json({ error: 'Invalid credentials' });
+    const passwordOk = await bcrypt.compare(password, user.password_hash);
+    if (!passwordOk) {
+      // Avoid leaking whether the email exists or not
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // 3) If user has 2FA enabled, require a TOTP or a backup code
-    if (user.two_factor_enabled && password == null) {
-      const hasTotp = typeof twoFactorToken === 'string' && twoFactorToken.length > 0;
-      const hasBackup = typeof backupCode === 'string' && backupCode.length > 0;
-
-      if (!hasTotp && !hasBackup) {
-        return res.status(401).json({ error: 'Two-factor code required' });
-      }
-
-      // Prefer TOTP if provided
-      if (hasTotp) {
-        const ok = verifyTotp({ token: twoFactorToken, secret: user.two_factor_secret });
-        if (!ok) return res.status(401).json({ error: 'Invalid 2FA code' });
-      } else {
-        // Fallback: backup code
-        const backups = JSON.parse(user.two_factor_backup || '[]');
-        const idx = backups.findIndex(c => c === backupCode);
-        if (idx === -1) return res.status(401).json({ error: 'Invalid backup code' });
-        backups.splice(idx, 1); // consume
-        await UserModel.setBackupCodes(user.id, JSON.stringify(backups));
-      }
-    }
-
-    // 4) Issue JWT + api_access token (your existing flow)
+    // 4) Issue JWT and persist api_access token
     const jwtPayload = { id: user.id, role: user.role };
-    const accessToken = jwt.sign(jwtPayload, process.env.JWT_SECRET, {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      // Misconfiguration guard
+      return res.status(500).json({ error: 'Server config error' });
+    }
+
+    const accessToken = jwt.sign(jwtPayload, secret, {
       algorithm: 'HS256',
-      expiresIn: '1h',
+      expiresIn: '1h', // adjust to your policy
     });
 
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
-    await TokenModel.insertUserToken(user.id, accessToken, 'api_access', new Date(Date.now()), expiresAt);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
+    await TokenModel.insertUserToken(
+      user.id,
+      accessToken,
+      'api_access',
+      now,
+      expiresAt
+    );
 
+    // 5) Success
     return res.status(200).json({ ok: true, token: accessToken });
   } catch (err) {
-    console.error('[login] error:', err);
+    console.error('[loginWithPassword] error:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
-  },
+},
+
+async loginTotp(req, res) {
+  try {
+    const { email_address, totp_token } = req.body || {};
+
+    const email = email_address.trim().toLowerCase();
+    const code = totp_token.trim();
+
+    // 2) Load user (do not reveal if not found)
+    const user = await UserModel.findByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (user.two_factor_enabled == 0) {
+      return res.status(401).json({ error: 'TOTP login is disabled' });
+    }
+
+    // Optional: disallow multiple concurrent sessions. Remove if you allow multi-sessions.
+    const existing = await TokenModel.findUserToken(user.id, 'api_access');
+    if (existing) {
+      return res.status(400).json({ error: 'Already logged in' });
+    }
+
+    // 3) Verify TOTP against stored Base32 secret
+    const secret = user.two_factor_secret;
+    const isValid = verifyTotp({ token: code, secret });
+    if (!isValid) {
+      // Add rate limiting at the route level to slow brute force (see notes below)
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // 4) Issue JWT + persist api_access token
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return res.status(500).json({ error: 'Server config error' });
+    }
+
+    const jwtPayload = { id: user.id, role: user.role };
+    const accessToken = jwt.sign(jwtPayload, jwtSecret, {
+      algorithm: 'HS256',
+      expiresIn: '1h', // adjust to your policy
+    });
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+    await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
+
+    // 5) Success
+    return res.status(200).json({ ok: true, token: accessToken });
+  } catch (err) {
+    console.error('[loginWithTotp] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+},
 
   async logout(req, res) {
     try {
@@ -189,44 +241,28 @@ try {
     }
   },
 
+// Enroll the currently authenticated user into TOTP 2FA (no admin override)
 async twoFaEnroll(req, res) {
   try {
     const authUser = req.user;
-    console.log(req.user);
 
-    // Determine target user id:
-    // - Admins must specify an id (via route param, body, or query)
-    // - Non-admins always operate on themselves (req.user.id)
-    let targetId = null;
+    // Always operate on the authenticated user
+    const targetId = String(authUser.id);
 
-    if (authUser?.role === 'admin') {
-      // Accept id from param, body, or query (choose any one source you prefer)
-      targetId = req.params?.id ?? req.body?.user_id ?? req.query?.user_id ?? null;
-      if (!targetId) {
-        return res.status(400).json({ error: 'Missing target user id for admin request' });
-      }
-    } else {
-      // Non-admin: always self
-      targetId = authUser?.id;
-      // Optional guard: if a non-admin tries to pass an id that differs from their own
-      const requestedId = req.params?.id ?? req.body?.user_id ?? req.query?.user_id;
-      if (requestedId && String(requestedId) !== String(targetId)) {
-        return res.status(403).json({ error: 'Forbidden: cannot enroll 2FA for another user' });
-      }
-    }
-
-    // Fetch target user
+    // Fetch current user
     const user = await UserModel.findById(targetId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     // Generate TOTP secret + otpauth URL + QR
     const secret = generateTotpSecret();
     const issuer = process.env.APP_NAME || 'MyApp';
-    const label = user.email_address || user.user_name; // prefer email if present
+    const label = user.email_address || user.user_name || String(user.id); // prefer email if present
     const otpauthUrl = buildOtpAuthUrl({ secret, label, issuer });
     const qrDataUrl = await generateQrDataUrl(otpauthUrl);
 
-    // Store the secret now, but keep 2FA disabled until the user confirms a valid code
+    // Store the secret now; keep 2FA disabled until confirmation code is verified
     const updated = await UserModel.updateTwoFactorSecret(targetId, secret);
     if (!updated) {
       return res.status(500).json({ error: 'Failed to set 2FA secret' });
@@ -234,8 +270,7 @@ async twoFaEnroll(req, res) {
 
     return res.status(200).json({
       ok: true,
-      method: 'google_authenticator',
-      qr: qrDataUrl,          // data:image/png;base64,...
+      qr: qrDataUrl,
       otpauth_url: otpauthUrl,
       message: 'Scan the QR code in your authenticator app and submit a code to confirm.'
     });
@@ -249,9 +284,6 @@ async twoFaEnroll(req, res) {
 async getQrPng(req, res) {
     try {
       const authUserId = req.user?.id;
-      if (!authUserId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
 
       // Load the caller's own record
       const user = await UserModel.findById(authUserId);
@@ -294,83 +326,129 @@ async getQrPng(req, res) {
   },
   
 
-async enrollConfirm(req, res) {
+
+// Confirm TOTP 2FA for the currently authenticated user
+async twoFaConfirm(req, res) {
   try {
     const authUser = req.user;
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(400).json({ error: 'Missing token' });
 
-    // Resolve target user id:
-    // - Admin: must provide target id via param/body/query
-    // - Non-admin: always operate on self (ignore any provided id if different)
-    let targetId;
+    // Always operate on the authenticated user
+    const targetId = String(authUser.id);
 
-    if (authUser?.role === 'admin') {
-      targetId = req.params?.id ?? req.body?.user_id ?? req.query?.user_id ?? null;
-      if (!targetId) {
-        return res.status(400).json({ error: 'Missing target user id for admin request' });
-      }
-    } else {
-      // Non-admins: enforce self
-      targetId = authUser?.id;
-      const requestedId = req.params?.id ?? req.body?.user_id ?? req.query?.user_id;
-      if (requestedId && String(requestedId) !== String(targetId)) {
-        return res.status(403).json({ error: 'Forbidden: cannot confirm 2FA for another user' });
-      }
+    // Load current user
+    const user = await UserModel.findById(targetId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    // Load target user
-    const user = await UserModel.findById(targetId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    // Ensure secret exists (enrollment started)
+    // Ensure secret exists (enrollment was started)
     const secret = user.two_factor_secret;
-    //console.log(user, user.two_factor_secret, req.body.token);
-    if (!secret) return res.status(400).json({ error: 'No 2FA secret to confirm' });
+    if (!secret) {
+      return res.status(400).json({ error: 'No 2FA secret to confirm' });
+    }
 
-    // Verify the 6-digit TOTP
-    const ok = verifyTotp({ token: req.body.token, secret });
-    if (!ok) return res.status(422).json({ error: 'Invalid 2FA code' });
+    // Verify the 6-digit TOTP (accept body.token or body.code for flexibility)
+    const code = req.body?.token ?? req.body?.code;
+    if (!code) {
+      return res.status(400).json({ error: 'Missing 2FA code' });
+    }
 
-    // Enable 2FA and set method to google_authenticator if not already set
-    // (You may have set method during enrollStart; this is defensive)
+    const ok = verifyTotp({ token: String(code), secret });
+    if (!ok) {
+      return res.status(422).json({ error: 'Invalid 2FA code' });
+    }
+
+    // Enable 2FA
     const enabled = await UserModel.enableTwoFactor(targetId);
-    if (!enabled) return res.status(500).json({ error: 'Failed to enable 2FA' });
+    if (!enabled) {
+      return res.status(500).json({ error: 'Failed to enable 2FA' });
+    }
 
     // Generate and persist backup codes (JSON)
     const backups = generateBackupCodes();
     const saved = await UserModel.setBackupCodes(targetId, JSON.stringify(backups));
-    if (!saved) return res.status(500).json({ error: 'Failed to store backup codes' });
-
-    // For security, only return backup codes to the owner (not to admins confirming for others)
-    const isSelf = String(authUser?.id) === String(targetId);
-    const response = {
-      ok: true,
-      message: 'Two-factor authentication enabled.'
-    };
-    if (isSelf) {
-      response.backup_codes = backups; // show once to the user themselves
+    if (!saved) {
+      return res.status(500).json({ error: 'Failed to store backup codes' });
     }
 
-    return res.status(200).json(response);
+    // Self-only flow: safe to return backup codes directly
+    return res.status(200).json({
+      ok: true,
+      message: 'Two-factor authentication enabled.',
+      backup_codes: backups
+    });
   } catch (err) {
-    console.error('[enrollConfirm] error:', err);
+    console.error('[twoFaConfirm] error:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 },
 
-  
+
 async twoFaDisable(req, res) {
-  const { id } = req.params;
-  const authUser = req.user;
+  try {
+    const authUser = req.user;
+    const targetId = String(authUser.id);
+    const user = await UserModel.findById(targetId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-  if (String(authUser.id) !== String(id) && authUser.role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden' });
+    // Idempotent behavior: If already disabled, return success
+    if (!user.two_factor_enabled && !user.two_factor_secret) {
+      return res.status(200).json({ ok: true, message: 'Two-factor authentication already disabled.' });
+    }
+
+    const { password, totp_token, backupCode } = req.body || {};
+    let verified = false;
+
+    // 1) Verify via password (preferred if available)
+    if (!verified && typeof password === 'string' && password.trim().length > 0) {
+      if (!user.password_hash) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      const ok = await bcrypt.compare(password.trim(), user.password_hash);
+      if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+      verified = true;
+    }
+
+    // 2) Verify via current TOTP (6-digit)
+    if (!verified && typeof totp_token === 'string' && totp_token.trim().length > 0) {
+      const code = totp_token.trim();
+      // Use your existing helper or otplib/speakeasy under the hood
+      const ok = verifyTotp({ token: code, secret: user.two_factor_secret });
+      if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+      verified = true;
+    }
+
+    // 3) Verify via backup code (consume on success)
+    if (!verified && typeof backupCode === 'string' && backupCode.trim().length > 0) {
+      const provided = backupCode.trim();
+      const backups = JSON.parse(user.two_factor_backup || '[]');
+      const idx = backups.findIndex(c => timingSafeEqual(c, provided));
+      if (idx === -1) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      // Consume the used backup code
+      backups.splice(idx, 1);
+      await UserModel.setBackupCodes(user.id, JSON.stringify(backups));
+      verified = true;
+    }
+
+    if (!verified) {
+      return res.status(400).json({
+        error: 'Provide password, a valid TOTP code, or a backup code to disable 2FA'
+      });
+    }
+
+    // Disable 2FA and clear secrets/backups
+    const disabled = await UserModel.disableTwoFactor(user.id); // should set two_factor_enabled=false
+    // If you don't have disableTwoFactor, you can flip the flag via a generic update
+
+    return res.status(200).json({
+      ok: true,
+      message: 'Two-factor authentication disabled.'
+    });
+  } catch (err) {
+    console.error('[disableTwoFa] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
-
-  await UserModel.disableTwoFactor(id);
-  return res.status(200).json({ ok: true, message: 'Two-factor disabled.' });
-}
-
-
+},
 };

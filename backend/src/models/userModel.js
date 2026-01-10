@@ -39,11 +39,10 @@ const UserModel = {
 		await pool.query("DELETE FROM user_tokens WHERE user_id = ?", [id]);
 		return { message: "User deleted" };
 	},
-
 	
 async updateTwoFactorSecret(id, secret) {
     const [res] = await pool.query(
-      `UPDATE users SET two_factor_secret = ?, two_factor_method = 'google_authenticator'
+      `UPDATE users SET two_factor_secret = ?, two_factor_method = 'totp'
        WHERE id = ?`,
       [secret, id]
     );
@@ -61,7 +60,7 @@ async updateTwoFactorSecret(id, secret) {
   async disableTwoFactor(id) {
     const [res] = await pool.query(
       `UPDATE users
-       SET two_factor_enabled = 0, two_factor_method = NULL, two_factor_secret = NULL, two_factor_backup = JSON_ARRAY()
+       SET two_factor_enabled = 0, two_factor_method = NULL, two_factor_secret = NULL, two_factor_backup = NULL
        WHERE id = ?`,
       [id]
     );
