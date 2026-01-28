@@ -1,46 +1,22 @@
 
-
-<!-- Nav container left -->
-<div class="nav-container" data-variant="left">
-  
-  <!-- Site logo -->
-  <a href="" class="logo">
-    <img src="icons/logo.svg" alt="ChordRadar" />
-  </a>
-
-  <!-- Anchors -->
-</div>
-
-
-<!-- Nav container right -->
-<div class="nav-container" data-variant="right">
-
-  <!-- Light/Dark mode (theme) Toggle -->
-  <button id="theme-toggle" aria-label="Toggle theme">
-    <img id="theme-icon" src="icons/moon.svg" alt="Toggle Light/Dark mode" />
-  </button>
-
-  <!-- Guitar Settings Dropdown -->
-  <div class="dropdown">
-    <button class="dropdown-btn" aria-label="Guitar settings">
-      <img src="icons/guitar.svg" alt="Guitar Settings" />
+<nav class="navbar navbar-expand-sm border-bottom px-4">
+    <a class="navbar-brand" href="#">ChordRadar</a>
+    
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample02" aria-controls="navbarsExample02" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="dropdown-content">
-      <button class="modal-trigger" data-modal="guitar-settings-modal" data-trigger="general-settings">general</button>
-      <button class="modal-trigger" data-modal="guitar-settings-modal" data-trigger="tuning-settings">tuning</button>
-      <button class="modal-trigger" data-modal="guitar-settings-modal" data-trigger="style-settings">style</button>
-      <button class="modal-trigger" data-modal="guitar-settings-modal" data-trigger="presets-settings">presets</button>
-      <button class="modal-trigger" data-modal="guitar-settings-modal" data-trigger="sound-settings">sound</button>
-     </div>
-  </div>
 
-  <!-- General Settings Dropdown -->
-  <div class="dropdown">
-    <button class="dropdown-btn" aria-label="Settings">
-      <img src="assets/icons/" alt="Settings" />
-    </button>
-    <div class="dropdown-content">
-      <button class="modal-trigger" data-modal="settings-modal" data-trigger="general-settings">General</button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarsExample02">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item">
+                <button id="theme-toggle" type="button" class="btn btn-outline-secondary btn-sm">
+                    <span id="theme-toggle-label">Dark</span>
+                </button>
+                <button id="guitar-settings-btn" type="button" class="btn btn-outline-primary btn-sm ms-2">
+                    Guitar Settings
+                </button>
+            </li>
+            
+        </ul>
     </div>
-  </div>
-</div>
+</nav>

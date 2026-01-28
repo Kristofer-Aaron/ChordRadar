@@ -4,7 +4,7 @@ const NotesFlat = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "
 const NotesSharp = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 
-function generateFretboard(stringCount = 4, fretCount = 22) {
+function generateFretboard(stringCount = 6, fretCount = 22) {
     const fretboardContainer = document.getElementById('fretboardContainer');
     
     // html will be inserted into fretboardContainer, elements should be appended to this string
@@ -14,6 +14,7 @@ function generateFretboard(stringCount = 4, fretCount = 22) {
     const semitoneRatio = Math.pow(2, 1 / 12); // ≈ 1.059463094
     const k = semitoneRatio - 1;
 
+    
     for (let i = 0; i <= fretCount; i++) { // Repeat for every fret
         // Insert a column for every fret
         html += `
@@ -23,11 +24,12 @@ function generateFretboard(stringCount = 4, fretCount = 22) {
         for (let j = 0; j < stringCount; j++) { // Repeat for every string
 
             // Variables for fret spacing calculation
-            stringTuning = tuning[j];
-            ind = notesFlat.findIndex(note => note == stringTuning);
-            note = notesFlat[(ind + i)%notesFlat.length];
+            stringTuning = Tuning[j];
+
+            ind = NotesFlat.findIndex(note => note == stringTuning);
+            note = NotesFlat[(ind + i)%NotesFlat.length];
             fretSpacing = 1800 * (1 / Math.pow(2, i / 12)) * k
-            
+
             html += `
             <div class="fretboardCell" style="width:${fretSpacing}px">
                 <input type="radio" name="s${j}" value="${i}" id="s${j}f${i}" class="fretboardRadio">
