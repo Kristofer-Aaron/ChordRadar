@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Hash the password
-  const hashedUserPassword = await bcrypt.hash("asd", 10);
-  const hashedAdminPassword = await bcrypt.hash("admin", 10);
+  const hashedUserPassword = await bcrypt.hash("asd12345", 10);
+  const hashedAdminPassword = await bcrypt.hash("admin123", 10);
 
   // Create a test user
   const testUser = await prisma.User.create({
