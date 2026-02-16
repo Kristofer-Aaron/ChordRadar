@@ -242,7 +242,7 @@ async loginTotp(req, res) {
   },
 
 // Enroll the currently authenticated user into TOTP 2FA (no admin override)
-async twoFaEnroll(req, res) {
+async totpEnroll(req, res) {
   try {
     const authUser = req.user;
 
@@ -279,7 +279,6 @@ async twoFaEnroll(req, res) {
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 },
-
 
 async getQrPng(req, res) {
     try {
@@ -324,11 +323,9 @@ async getQrPng(req, res) {
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   },
-  
-
 
 // Confirm TOTP 2FA for the currently authenticated user
-async twoFaConfirm(req, res) {
+async totpConfirm(req, res) {
   try {
     const authUser = req.user;
 
@@ -383,8 +380,7 @@ async twoFaConfirm(req, res) {
   }
 },
 
-
-async twoFaDisable(req, res) {
+async totpDisable(req, res) {
   try {
     const authUser = req.user;
     const targetId = String(authUser.id);
