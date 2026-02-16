@@ -4,10 +4,11 @@ const NotesFlat = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "
 const NotesSharp = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 
+
 function generateFretboard(stringCount = 6, fretCount = 22) {
     const fretboardContainer = document.getElementById('fretboardContainer');
     
-    // html will be inserted into fretboardContainer, elements should be appended to this string
+    // html will be inserted into fretboardContainer, elements are to be appended to this string
     let html = '';
 
     // Constants for fret spacing calculation
@@ -21,7 +22,7 @@ function generateFretboard(stringCount = 6, fretCount = 22) {
         <div class="fret"></div>
         <div class="fretboardColumn" data-fret="${i}">`;
 
-        for (let j = 0; j < stringCount; j++) { // Repeat for every string
+        for (let j = stringCount - 1; j >= 0; j--) { // Repeat for every string
 
             // Variables for fret spacing calculation
             stringTuning = Tuning[j];
@@ -33,20 +34,19 @@ function generateFretboard(stringCount = 6, fretCount = 22) {
             html += `
             <div class="fretboardCell" style="width:${fretSpacing}px">
                 <input type="radio" name="s${j}" value="${i}" id="s${j}f${i}" class="fretboardRadio">
-                
                 <label for="s${j}f${i}">
                     <div>${note}</div>
                 </label>
             </div>`;
         }
-        html += `
-        </div>
-        `;
+        html += `</div>`;
     }
     html += `</div>`;
 
     fretboardContainer.innerHTML = html;
 }
+
+
 
 function getRadioValues() {
     const radios = document.querySelectorAll('input.fretboardRadio');
@@ -57,9 +57,13 @@ function getRadioValues() {
     });
 }
 
+
+
 function alertValues(array) {
     console.log(array.join(" "));
 }
+
+
 
 // Toggle/uncheck radio buttons
 document.addEventListener('click', e => {
@@ -74,13 +78,19 @@ document.addEventListener('click', e => {
     }
 });
 
+
+
 // Horizontal scroll with mouse wheel
 document.addEventListener('wheel', e => {
     const container = document.getElementById('fretboardWrapper');
-    if (e.deltaY !== 0) {
+    if (e.deltaY !== 0 && container.matches(':hover')) {
         container.scrollLeft += e.deltaY;
         e.preventDefault();
     }
 });
 
+
+
 generateFretboard(6, 24);
+
+

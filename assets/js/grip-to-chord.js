@@ -67,6 +67,7 @@ function GripToNotes(pat)   //pattern to notes
 }
 
 
+
 function NotesToRelativeDistance(notes)     //notes to relatve distance
 {
     relativeDistance = [];
@@ -86,6 +87,8 @@ function NotesToRelativeDistance(notes)     //notes to relatve distance
     return relativeDistance;
 }
 
+
+
 function DetermineTritone(relativeDistance)       //determine tritone
 {
     let bestKey = null;
@@ -100,6 +103,8 @@ function DetermineTritone(relativeDistance)       //determine tritone
     }
     return bestKey;
 }
+
+
 
 function DetermineRemainders(RelDisc, tritone)      //determine remainders
 {
@@ -142,6 +147,8 @@ function DetermineRemainders(RelDisc, tritone)      //determine remainders
     return remainderTone;
 }
 
+
+
 function DetermineSlashchords(basenote, lownote)      //determine if slashchorDetermineSlashchords
 {
     let slash = "";
@@ -152,8 +159,12 @@ function DetermineSlashchords(basenote, lownote)      //determine if slashchorDe
     return slash;
 }
 
+
+
 function RotateForRootnote(notes, index)      //rotate for rootnote
 {
     const rotated = notes.slice(index).concat(notes.slice(0, index));
     return rotated;
 }
+
+

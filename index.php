@@ -2,21 +2,23 @@
 <html lang="en">
 
 <head>
-    <!-- Load head content from separate file !-->
-    <?php require './partials/head.html' ?>
-
     <!-- Bootstrap 5.3.8 link -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+
+    <!-- Load head content from separate file !-->
+    <?php require './partials/head.html' ?>
 </head>
 
-<body class="d-flex flex-column min-vh-100">
+<body class="d-flex flex-column min-vh-100" style=" background-image: url('assets/images/wood2.png');">
     <!-- Load navbar from separate file !-->
     <?php require './partials/navbar.html' ?> 
 
-    <div id="fretboardWrapper">
-        <div id="fretboardContainer"></div>
-    </div>
-    
+    <main style="margin: 100px 0px;">
+        <div id="fretboardWrapper">
+            <div id="fretboardContainer"></div>
+        </div>
+    </main>
+
     <?php require './partials/footer.html' ?>
 </body>
 
