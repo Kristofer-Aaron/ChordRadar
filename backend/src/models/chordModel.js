@@ -1,37 +1,112 @@
 import pool from "../config/db.js";
 
 export const ChordModel = {
-  async findAll() {
-    const [rows] = await pool.query("SELECT * FROM chords");
+  async findAll({ fields = {} } = {}) {
+    const notationField =
+    fields.notation === "value"
+      ? "notations.value AS notation"
+      : "chords.notation_id AS notation_id";
+
+    const tuningField =
+    fields.tuning === "value"
+      ? "tunings.value AS tuning"
+      : "tunings.id AS tuning_id";
+
+    const gripField =
+    fields.grip === "value"
+      ? "grips.strings AS grip"
+      : "grips.id AS grip_id";
+
+    const query = `
+    SELECT chords.id, ${notationField}, ${tuningField}, ${gripField}
+    FROM chords
+    JOIN notations ON chords.notation_id = notations.id
+    JOIN tunings   ON chords.tuning_id   = tunings.id
+    JOIN grips     ON chords.grip_id     = grips.id
+    `;
+
+    const [rows] = await pool.query(query);
     return rows;
   },
 
-  async findById(id) {
-    const [rows] = await pool.query("SELECT * FROM chords WHERE id = ?", [id]);
-    return rows[0];
+  async findById({id, fields = {} }) {
+  const notationField =
+  fields.notation === "value"
+    ? "notations.value AS notation"
+    : "chords.notation_id AS notation_id";
+
+const tuningField =
+  fields.tuning === "value"
+    ? "tunings.value AS tuning"
+    : "tunings.id AS tuning_id";
+
+const gripField =
+  fields.grip === "value"
+    ? "grips.strings AS grip"
+    : "grips.id AS grip_id";
+
+const query = `
+  SELECT chords.id, ${notationField}, ${tuningField}, ${gripField}
+  FROM chords
+  JOIN notations ON chords.notation_id = notations.id
+  JOIN tunings   ON chords.tuning_id   = tunings.id
+  JOIN grips     ON chords.grip_id     = grips.id
+  WHERE chords.id = ?
+`;
+
+const [rows] = await pool.query(query, [id]);
+return rows[0] ?? null;
+
   },
 
-  async create(data) {
-    const { notation_id, tuning_id, grip_id } = data;
+  async create(notation, tuning, grip) {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
 
-    const [existing] = await pool.query(
-      "SELECT * FROM chords WHERE notation_id = ? AND tuning_id = ? AND grip_id = ?",
-      [notation_id, tuning_id, grip_id]
-    );
-
-    if (existing.length > 0) {
-      const error = new Error(
-        "Chord already exists with this notation, tuning, and grip"
+      // 1) Notation: insert or reuse existing, and capture its id via LAST_INSERT_ID trick
+      const [nRes] = await conn.query(
+        "INSERT INTO notations (value) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
+        [notation]
       );
-      error.status = 409; // HTTP 409 Conflict
-      throw error;
-    }
+      const notation_id = nRes.insertId;
 
-    const [result] = await pool.query(
-      "INSERT INTO chords (notation_id, tuning_id, grip_id) VALUES (?, ?, ?)",
-      [notation_id, tuning_id, grip_id]
-    );
-    return { id: result.insertId, ...data };
+      // 2) Tuning
+      const [tRes] = await conn.query(
+        "INSERT INTO tunings (value) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
+        [tuning]
+      );
+      const tuning_id = tRes.insertId;
+
+      // 3) Grip
+      const [gRes] = await conn.query(
+        "INSERT INTO grips (strings) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
+        [grip]
+      );
+      const grip_id = gRes.insertId;
+
+      // 4) Chord (deduplicated by the composite unique key)
+      const [cRes] = await conn.query(
+        "INSERT INTO chords (notation_id, tuning_id, grip_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
+        [notation_id, tuning_id, grip_id]
+      );
+      const chordId = cRes.insertId;
+
+      await conn.commit();
+      return { id: chordId, notation_id, tuning_id, grip_id };
+    } catch (err) {
+      await conn.rollback();
+      // If you use plain INSERT (without ON DUPLICATE) for the chord step,
+      // handle duplicates like this:
+      if (err.code === "ER_DUP_ENTRY") {
+        err.status = 409;
+        err.message =
+          "Chord already exists with this notation, tuning, and grip";
+      }
+      throw err;
+    } finally {
+      conn.release();
+    }
   },
 
   async update(id, data) {

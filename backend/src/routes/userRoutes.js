@@ -8,7 +8,7 @@ import { userSchema } from '../schemas/userSchema.js';
 const router = express.Router();
 
 router.get('/', authenticate, requireActiveToken, authorizeRole('admin'), UserController.getAll);
-router.get('/:selector/:value', authenticate, requireActiveToken, authorizeSelfOrAdminFlexible('selector', 'value'), UserController.getUserBySelector);
+router.get('/:selector/:value', authenticate, requireActiveToken, authorizeSelfOrAdminFlexible('selector', 'value'), UserController.getBySelector);
 router.post('/', authenticate, requireActiveToken, authorizeRole('admin'), hashPasswordIfPresent, validateBody(userSchema), UserController.create); 
 //router.put('/:id', authenticate, requireActiveToken, authorizeRole('admin'), validateBody(UserSchema), ensureEmailUnique('id'), ensureTargetUserExists('id'), hashPasswordIfPresent, requireNonEmptyUpdates, UserController.update);
 //router.patch('/:id', authenticate, requireActiveToken, authorizeSelfOrAdmin(), /*validateBody(patchSchema),*/ ensureEmailUnique('id'), ensureTargetUserExists('id'), hashPasswordIfPresent, UserController.patch);

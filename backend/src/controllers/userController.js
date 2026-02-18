@@ -23,7 +23,7 @@ const UserController = {
     },
 
     
-async getUserBySelector(req, res) {
+async getBySelector(req, res) {
   const { selector, value } = req.params;
 
   try {
