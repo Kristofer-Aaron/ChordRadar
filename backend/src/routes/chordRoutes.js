@@ -9,6 +9,7 @@ const router = express.Router();
 // Public routes
 router.get('/', ChordController.getAll);
 router.get('/:id', ChordController.getById);
+router.get('/:selector/:selectorValue/tuning/:tuningValue', ChordController.getBySelector);
 
 // Protected routes (admin only)
 router.post('/', authenticate, authorizeSelfOrAdminFlexible, ChordController.create);

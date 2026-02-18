@@ -53,6 +53,37 @@ export const ChordController = {
 		}
 	},
 
+	async getBySelector(req, res) {
+	try {
+		const { selector, selectorValue, tuningValue } = req.params;
+
+		// Basic validation
+		if (!["notation", "grip"].includes(selector)) {
+			return res
+			.status(400)
+			.json({ message: "Selector must be either 'notation' or 'grip'." });
+		}
+		if (!selectorValue || !tuningValue) {
+			return res
+			.status(400)
+			.json({ message: "Both selectorValue and tuningValue are required." });
+		}
+
+		const rows = await ChordModel.findBySelector({
+			selector,
+			selectorValue,
+			tuningValue,
+		});
+
+		// 200 with an array (can be empty)
+		return res.json(rows);
+		} catch (err) {
+		const status = err.status || 500;
+		console.error("Error fetching chords:", err);
+		return res.status(status).json({ error: err.message });
+		}
+	},
+
 	async create(req, res) {
 		
 	const { notation, tuning, grip } = req.body ?? {};

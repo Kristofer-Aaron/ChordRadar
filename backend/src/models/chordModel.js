@@ -58,6 +58,46 @@ const [rows] = await pool.query(query, [id]);
 return rows[0] ?? null;
 
   },
+  
+  async findBySelector({ selector, selectorValue, tuningValue }) {
+
+    const select = `
+      SELECT
+        chords.id,
+        TRIM(REPLACE(notations.value, '\r', '')) AS notation,
+        tunings.value AS tuning,
+        grips.strings AS grip
+      FROM chords
+      JOIN notations ON chords.notation_id = notations.id
+      JOIN tunings   ON chords.tuning_id   = tunings.id
+      JOIN grips     ON chords.grip_id     = grips.id
+      WHERE LOWER(tunings.value) = LOWER(?)
+    `;
+
+    const params = [tuningValue];
+
+    // Add selector-specific predicate
+    let where = "";
+    if (selector === "notation") {
+      where = `
+        AND LOWER(TRIM(REPLACE(notations.value, '\r', '')))
+            = LOWER(TRIM(REPLACE(?, '\r', '')))
+      `;
+      params.push(selectorValue);
+    } else if (selector === "grip") {
+      where = ` AND grips.strings = ? `;
+      params.push(selectorValue);
+    } else {
+      // Should be validated in controller; this is a safety net.
+      throw Object.assign(new Error("Invalid selector"), { status: 400 });
+    }
+
+    const query = `${select} ${where}`;
+
+    const [rows] = await pool.query(query, params);
+    return rows; // [] if none found
+
+  },
 
   async create(notation, tuning, grip) {
     const conn = await pool.getConnection();
