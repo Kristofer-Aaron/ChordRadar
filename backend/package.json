@@ -9,8 +9,9 @@
     "dev": "nodemon src/server.js",
     "migrate": "npx prisma migrate dev",
     "generate": "npx prisma generate",
+    "deploy": "npx prisma migrate deploy",
     "seed:chords": "node prisma/seeders/chordSeeder.js",
-    "seed:users": "node prisma/seeders/testUserSeeder.js",
+    "seed:users": "node prisma/seeders/userSeeder.js",
     "db:setup": "npm run generate && npm run migrate && npm run seed:chords",
     "db:backup": "node src/utils/dbBackup.js"
   },

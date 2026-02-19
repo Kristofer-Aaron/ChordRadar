@@ -1,4 +1,4 @@
-import { TokenModel } from "../models/tokenModels.js";
+import { TokenModel } from "../models/tokenModel.js";
 import UserModel from "../models/userModel.js";
 
 const UserController = {

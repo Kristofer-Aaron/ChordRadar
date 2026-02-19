@@ -3,49 +3,32 @@ import { ChordModel } from "../models/chordModel.js";
 import { chordSchema } from "../schemas/chordSchema.js";
 
 export const ChordController = {
-	//get by notation + tuning
-	//get by grip + tuning
-
 	async getAll(req, res) {
 		try {
-			// Parse optional `fields` JSON like your original controller
+			// Parse optional fields to display value instead of id (notation, grip, tuning)
 			let fields = {};
-			try {
-			  fields = req.query.fields ? JSON.parse(req.query.fields) : {};
-			} catch {
-			  fields = {};
-			}
+			try { fields = req.query.fields ? JSON.parse(req.query.fields) : {}; }
+			catch { fields = {}; }
 	  
 			const rows = await ChordModel.findAll({ fields });
 			return res.json(rows);
-		  } catch (err) {
-			return res.status(500).json({ error: err.message });
-		  }	  
+		  } catch (err) { return res.status(500).json({ error: err.message }); }
 	},
 	
 	async getById(req, res) {
 		try {
 			const { id } = req.params;
 
-			// Basic ID validation (keep your existing behavior)
-			if (!id || isNaN(id)) {
-			return res.status(400).json({ message: "Invalid ID format" });
-			}
+			// Validate id
+			if (!id || isNaN(id)) { return res.status(400).json({ message: "Invalid ID format" }); }
 
-			// Parse optional `fields` JSON (same behavior as your original code)
+			// Parse optional fields to display value instead of id (notation, grip, tuning)
 			let fields = {};
-			try {
-			fields = req.query.fields ? JSON.parse(req.query.fields) : {};
-			} catch {
-			fields = {};
-			}
+			try { fields = req.query.fields ? JSON.parse(req.query.fields) : {}; }
+			catch { fields = {}; }
 
 			const row = await ChordModel.findById({ id: Number(id), fields });
-
-			if (!row) {
-			return res.status(404).json({ message: "Chord not found" });
-			}
-
+			if (!row) { return res.status(404).json({ message: "Chord not found" }); }
 			return res.json(row);
 		} catch (err) {
 			console.error("Error fetching chord by ID:", err);
@@ -59,60 +42,37 @@ export const ChordController = {
 
 		// Basic validation
 		if (!["notation", "grip"].includes(selector)) {
-			return res
-			.status(400)
-			.json({ message: "Selector must be either 'notation' or 'grip'." });
+			return res.status(400).json({ message: "Selector must be either 'notation' or 'grip'." });
 		}
 		if (!selectorValue || !tuningValue) {
-			return res
-			.status(400)
-			.json({ message: "Both selectorValue and tuningValue are required." });
+			return res.status(400).json({ message: "Both selectorValue and tuningValue are required." });
 		}
 
-		const rows = await ChordModel.findBySelector({
-			selector,
-			selectorValue,
-			tuningValue,
-		});
+		const rows = await ChordModel.findBySelector({ selector, selectorValue, tuningValue });
 
 		// 200 with an array (can be empty)
 		return res.json(rows);
 		} catch (err) {
-		const status = err.status || 500;
-		console.error("Error fetching chords:", err);
-		return res.status(status).json({ error: err.message });
+			const status = err.status || 500;
+			console.error("Error fetching chords:", err);
+			return res.status(status).json({ error: err.message });
 		}
 	},
 
 	async create(req, res) {
-		
-	const { notation, tuning, grip } = req.body ?? {};
+		const { notation, tuning, grip } = req.body ?? {};
 
-	// Minimal input checks (you can replace with Joi/Zod middleware if desired)
-	if (
-		typeof notation !== "string" ||
-		typeof tuning !== "string" ||
-		typeof grip !== "string" ||
-		!notation.trim() ||
-		!tuning.trim() ||
-		!grip.trim()
-		) {
-		return res.status(400).json({
-			message: "notation, tuning, and grip are required string fields",
-		});
+		// Minimal input checks (you can replace with Joi/Zod middleware if desired)
+		if (typeof notation !== "string" || typeof tuning !== "string" || typeof grip !== "string" || !notation.trim() || !tuning.trim() || !grip.trim()) {
+			return res.status(400).json({message: "notation, tuning, and grip are required string fields"});
 		}
 
 		try {
-		const result = await ChordModel.create({
-			notation: notation.trim(),
-			tuning: tuning.trim(),
-			grip: grip.trim(),
-		});
-
-		return res.status(201).json(result);
+			const result = await ChordModel.create({ notation: notation.trim(), tuning: tuning.trim(), grip: grip.trim() });
+			return res.status(201).json(result);
 		} catch (err) {
-		const status = err.status || 500;
-		return res.status(status).json({ error: err.message });
+			const status = err.status || 500;
+			return res.status(status).json({ error: err.message });
 		}
 	},
 

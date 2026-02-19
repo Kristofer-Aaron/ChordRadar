@@ -2,101 +2,58 @@ import pool from "../config/db.js";
 
 export const ChordModel = {
   async findAll({ fields = {} } = {}) {
-    const notationField =
-    fields.notation === "value"
-      ? "notations.value AS notation"
-      : "chords.notation_id AS notation_id";
+    const notationField = fields.notation === "value" ? "TRIM(REPLACE(notations.value, '\r', '')) AS notation" : "chords.notation_id AS notation_id";
+    const tuningField = fields.tuning === "value" ? "tunings.value AS tuning" : "tunings.id AS tuning_id";
+    const gripField = fields.grip === "value" ? "grips.strings AS grip" : "grips.id AS grip_id";
 
-    const tuningField =
-    fields.tuning === "value"
-      ? "tunings.value AS tuning"
-      : "tunings.id AS tuning_id";
-
-    const gripField =
-    fields.grip === "value"
-      ? "grips.strings AS grip"
-      : "grips.id AS grip_id";
-
-    const query = `
-    SELECT chords.id, ${notationField}, ${tuningField}, ${gripField}
-    FROM chords
-    JOIN notations ON chords.notation_id = notations.id
-    JOIN tunings   ON chords.tuning_id   = tunings.id
-    JOIN grips     ON chords.grip_id     = grips.id
-    `;
+    const query = `SELECT chords.id, ${notationField}, ${tuningField}, ${gripField} FROM chords
+                   JOIN notations ON chords.notation_id = notations.id
+                   JOIN tunings   ON chords.tuning_id   = tunings.id
+                   JOIN grips     ON chords.grip_id     = grips.id`;
 
     const [rows] = await pool.query(query);
     return rows;
   },
 
   async findById({id, fields = {} }) {
-  const notationField =
-  fields.notation === "value"
-    ? "notations.value AS notation"
-    : "chords.notation_id AS notation_id";
+    const notationField = fields.notation === "value" ? "TRIM(REPLACE(notations.value, '\r', '')) AS notation" : "chords.notation_id AS notation_id";
+    const tuningField = fields.tuning === "value" ? "tunings.value AS tuning" : "tunings.id AS tuning_id";
+    const gripField = fields.grip === "value" ? "grips.strings AS grip" : "grips.id AS grip_id";
 
-const tuningField =
-  fields.tuning === "value"
-    ? "tunings.value AS tuning"
-    : "tunings.id AS tuning_id";
+    const query = `SELECT chords.id, ${notationField}, ${tuningField}, ${gripField} FROM chords
+                  JOIN notations ON chords.notation_id = notations.id
+                  JOIN tunings   ON chords.tuning_id   = tunings.id
+                  JOIN grips     ON chords.grip_id     = grips.id
+                  WHERE chords.id = ?`;
 
-const gripField =
-  fields.grip === "value"
-    ? "grips.strings AS grip"
-    : "grips.id AS grip_id";
-
-const query = `
-  SELECT chords.id, ${notationField}, ${tuningField}, ${gripField}
-  FROM chords
-  JOIN notations ON chords.notation_id = notations.id
-  JOIN tunings   ON chords.tuning_id   = tunings.id
-  JOIN grips     ON chords.grip_id     = grips.id
-  WHERE chords.id = ?
-`;
-
-const [rows] = await pool.query(query, [id]);
-return rows[0] ?? null;
-
+    const [rows] = await pool.query(query, [id]);
+    return rows[0] ?? null;
   },
   
   async findBySelector({ selector, selectorValue, tuningValue }) {
-
-    const select = `
-      SELECT
-        chords.id,
-        TRIM(REPLACE(notations.value, '\r', '')) AS notation,
-        tunings.value AS tuning,
-        grips.strings AS grip
-      FROM chords
-      JOIN notations ON chords.notation_id = notations.id
-      JOIN tunings   ON chords.tuning_id   = tunings.id
-      JOIN grips     ON chords.grip_id     = grips.id
-      WHERE LOWER(tunings.value) = LOWER(?)
-    `;
+    const select = `SELECT chords.id, TRIM(REPLACE(notations.value, '\r', '')) AS notation, tunings.value AS tuning, grips.strings AS grip FROM chords
+                    JOIN notations ON chords.notation_id = notations.id
+                    JOIN tunings   ON chords.tuning_id   = tunings.id
+                    JOIN grips     ON chords.grip_id     = grips.id
+                    WHERE LOWER(tunings.value) = LOWER(?)`;
 
     const params = [tuningValue];
 
     // Add selector-specific predicate
     let where = "";
     if (selector === "notation") {
-      where = `
-        AND LOWER(TRIM(REPLACE(notations.value, '\r', '')))
-            = LOWER(TRIM(REPLACE(?, '\r', '')))
-      `;
+      where = `AND LOWER(TRIM(REPLACE(notations.value, '\r', ''))) = LOWER(TRIM(REPLACE(?, '\r', '')))`;
       params.push(selectorValue);
     } else if (selector === "grip") {
       where = ` AND grips.strings = ? `;
       params.push(selectorValue);
     } else {
-      // Should be validated in controller; this is a safety net.
       throw Object.assign(new Error("Invalid selector"), { status: 400 });
     }
 
     const query = `${select} ${where}`;
-
     const [rows] = await pool.query(query, params);
-    return rows; // [] if none found
-
+    return rows;
   },
 
   async create(notation, tuning, grip) {
@@ -104,28 +61,28 @@ return rows[0] ?? null;
     try {
       await conn.beginTransaction();
 
-      // 1) Notation: insert or reuse existing, and capture its id via LAST_INSERT_ID trick
+      // insert or reuse existing notation, and capture its id using LAST_INSERT_ID
       const [nRes] = await conn.query(
         "INSERT INTO notations (value) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
         [notation]
       );
       const notation_id = nRes.insertId;
 
-      // 2) Tuning
+      // tuning
       const [tRes] = await conn.query(
         "INSERT INTO tunings (value) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
         [tuning]
       );
       const tuning_id = tRes.insertId;
 
-      // 3) Grip
+      // grip
       const [gRes] = await conn.query(
         "INSERT INTO grips (strings) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
         [grip]
       );
       const grip_id = gRes.insertId;
 
-      // 4) Chord (deduplicated by the composite unique key)
+      // chord (deduplicated by the composite unique key)
       const [cRes] = await conn.query(
         "INSERT INTO chords (notation_id, tuning_id, grip_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
         [notation_id, tuning_id, grip_id]

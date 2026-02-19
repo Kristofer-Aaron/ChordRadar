@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import UserModel from "../models/userModel.js";
 import sendEmail from "../utils/sendEmail.js";
-import { TokenModel } from "../models/tokenModels.js";
+import { TokenModel } from "../models/tokenModel.js";
 import { generateQrDataUrl } from "../utils/qrcode.js";
 import QRCode from 'qrcode';
 import { generateTotpSecret, buildOtpAuthUrl, verifyTotp, generateBackupCodes } from "../utils/totp.js";
@@ -175,7 +175,7 @@ async loginTotp(req, res) {
      await TokenModel.insertUserToken(userId, emailToken, 'email_verification', now, expiresAt);
 
      //Send verification email
-      const verificationLink = `http://chordradar.akos.local/auth/verify?token=${emailToken}`;
+      const verificationLink = `http://localhost:3030/auth/verify?token=${emailToken}`;
       await sendEmail(
         email_address,
         "Verify your email",

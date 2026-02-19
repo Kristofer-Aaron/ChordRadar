@@ -1,4 +1,19 @@
 import UserModel from '../models/userModel.js';
+import { createChordSchema } from '../schemas/chordSchema.js';
+
+export function validateCreateChord(req, res, next) {
+  const { error, value } = createChordSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+
+  if (error) {
+    return res.status(400).json({
+      message: "Invalid request body",
+      details: error.details.map(d => ({ path: d.path.join("."), message: d.message })),
+    });
+  }
+
+  req.body = value;
+  return next();
+}
 
 export function validateBody(schema) {
   return (req, res, next) => {

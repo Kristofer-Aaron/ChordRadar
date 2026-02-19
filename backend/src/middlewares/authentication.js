@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import jwt from "jsonwebtoken";
 import UserModel from "../models/userModel.js";
-import { TokenModel } from "../models/tokenModels.js";
+import { TokenModel } from "../models/tokenModel.js";
 
 export async function authenticate(req, res, next) {
   const auth = req.headers.authorization || '';
