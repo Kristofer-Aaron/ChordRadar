@@ -17,8 +17,27 @@ import userRoutes from './routes/userRoutes.js';
 const app = express();
 const openapiSpec = YAML.load("./docs/openapi.yaml");
 
-app.use(cors());
-//app.use(bodyParser.json());
+
+const allowedOrigins = [
+    'http://127.0.01',
+    'http://localhost',
+    'http://localhost:80',
+  ];  
+
+app.use(cors({
+    origin(origin, cb) {
+      // allow non-browser tools without Origin (curl/Postman)
+      if (!origin) return cb(null, true);
+      return allowedOrigins.includes(origin)
+        ? cb(null, true)
+        : cb(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,      // only if you actually need cookies/auth
+    maxAge: 86400,
+  }));
+  
 app.use(express.json());
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));

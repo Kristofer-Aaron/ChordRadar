@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const prisma = new PrismaClient();
 
 async function main() {
-  // Read users from a fixed JSON file next to this script
+  // Get user credentials from JSON file 
   const filePath = path.join(__dirname, "../data", "users.json");
   const raw = await fs.readFileSync(filePath, "utf8");
   const users = JSON.parse(raw);
@@ -17,7 +17,6 @@ async function main() {
   for (const u of users) {
     const password_hash = await bcrypt.hash(String(u.password), 10);
 
-    // Minimal fields; add/adjust as your schema requires
     const data = {
       user_name: u.user_name,
       first_name: u.first_name,
@@ -37,7 +36,7 @@ async function main() {
       last_login_at: new Date(),
     };
 
-    // Idempotent: create or update by unique email
+    // Idempotent behaviour: create or update record by unique email
     await prisma.user.upsert({
       where: { email_address: data.email_address },
       update: data,

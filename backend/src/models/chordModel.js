@@ -56,54 +56,56 @@ export const ChordModel = {
     return rows;
   },
 
-  async create(notation, tuning, grip) {
-    const conn = await pool.getConnection();
-    try {
-      await conn.beginTransaction();
+  async create({ notation, tuning, grip }) {
+    
+const conn = await pool.getConnection();
+try {
+  await conn.beginTransaction();
 
-      // insert or reuse existing notation, and capture its id using LAST_INSERT_ID
-      const [nRes] = await conn.query(
-        "INSERT INTO notations (value) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
-        [notation]
-      );
-      const notation_id = nRes.insertId;
+  const normNotation = String(notation).replace(/\r/g, "").trim();
+  const normTuning   = String(tuning).toLowerCase().trim();
+  const normGrip     = String(grip).trim();
 
-      // tuning
-      const [tRes] = await conn.query(
-        "INSERT INTO tunings (value) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
-        [tuning]
-      );
-      const tuning_id = tRes.insertId;
+  // Upsert foreigns (safe & idempotent)
+  const [nRes] = await conn.query(
+    "INSERT INTO notations (value) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
+    [normNotation]
+  );
+  const notation_id = nRes.insertId;
 
-      // grip
-      const [gRes] = await conn.query(
-        "INSERT INTO grips (strings) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
-        [grip]
-      );
-      const grip_id = gRes.insertId;
+  const [tRes] = await conn.query(
+    "INSERT INTO tunings (value) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
+    [normTuning]
+  );
+  const tuning_id = tRes.insertId;
 
-      // chord (deduplicated by the composite unique key)
-      const [cRes] = await conn.query(
-        "INSERT INTO chords (notation_id, tuning_id, grip_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
-        [notation_id, tuning_id, grip_id]
-      );
-      const chordId = cRes.insertId;
+  const [gRes] = await conn.query(
+    "INSERT INTO grips (strings) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
+    [normGrip]
+  );
+  const grip_id = gRes.insertId;
 
-      await conn.commit();
-      return { id: chordId, notation_id, tuning_id, grip_id };
-    } catch (err) {
-      await conn.rollback();
-      // If you use plain INSERT (without ON DUPLICATE) for the chord step,
-      // handle duplicates like this:
-      if (err.code === "ER_DUP_ENTRY") {
-        err.status = 409;
-        err.message =
-          "Chord already exists with this notation, tuning, and grip";
-      }
-      throw err;
-    } finally {
-      conn.release();
-    }
+  // Plain INSERT so duplicates throw ER_DUP_ENTRY
+  const [cRes] = await conn.query(
+    "INSERT INTO chords (notation_id, tuning_id, grip_id) VALUES (?, ?, ?)",
+    [notation_id, tuning_id, grip_id]
+  );
+
+  await conn.commit();
+  return { id: cRes.insertId, notation_id, tuning_id, grip_id };
+} catch (err) {
+  await conn.rollback();
+
+  if (err && err.code === "ER_DUP_ENTRY") {
+    // Translate into a proper HTTP 409
+    err.status = 409;
+    err.message = "Chord already exists with this notation, tuning, and grip";
+  }
+  throw err;
+} finally {
+  conn.release();
+}
+
   },
 
   async update(id, data) {
