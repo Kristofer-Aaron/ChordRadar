@@ -108,6 +108,11 @@ try {
 
   },
 
+  async insertUserChordRelation(user_id, chord_id) {
+    const sql = "INSERT INTO user_chord_relations (user_id, chord_id) VALUES (?, ?);";
+    const params = [user_id, chord_id];
+  },
+
   async update(id, data) {
     const { notation_id, tuning_id, grip_id } = data;
 

@@ -432,7 +432,7 @@ async totpDisable(req, res) {
     if (!verified && typeof backupCode === 'string' && backupCode.trim().length > 0) {
       const provided = backupCode.trim();
       const backups = JSON.parse(user.two_factor_backup || '[]');
-      const idx = backups.findIndex(c => timingSafeEqual(c, provided));
+      const idx = backups.findIndex(c => crypto.timingSafeEqual(c, provided));
       if (idx === -1) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
@@ -454,10 +454,10 @@ async totpDisable(req, res) {
 
     return res.status(200).json({
       ok: true,
-      message: 'Two-factor authentication disabled.'
+      message: 'TOTP authentication disabled.'
     });
   } catch (err) {
-    console.error('[disableTwoFa] error:', err);
+    console.error('[disableTotp] error:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 },

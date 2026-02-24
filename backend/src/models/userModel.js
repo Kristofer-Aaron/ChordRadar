@@ -20,7 +20,7 @@ const UserModel = {
 		);
 		return rows[0];
 	},
-
+	
 	async create(data) {
 		const now = new Date();
 		const { user_name, first_name, last_name, email_address, password_hash, password_changed_at, preferences, account_created_at=now, last_login_at=now, role='user', status='pending', email_verified='0' } = data;

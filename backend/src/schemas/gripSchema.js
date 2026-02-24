@@ -1,5 +1,5 @@
 import Joi from "joi";
 
-export const gripSchema = Joi.object({
-	strings: Joi.string().required(),
+export const GripSchema = Joi.object({
+	strings: Joi.string().max(8).required()
 });

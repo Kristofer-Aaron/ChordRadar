@@ -1,6 +1,7 @@
 import pool from "../config/db.js";
 import { ChordModel } from "../models/chordModel.js";
 import { chordSchema } from "../schemas/chordSchema.js";
+import UserModel from "../models/userModel.js";
 
 export const ChordController = {
 	async getAll(req, res) {
@@ -66,6 +67,15 @@ export const ChordController = {
 		if (typeof notation !== "string" || typeof tuning !== "string" || typeof grip !== "string" || !notation.trim() || !tuning.trim() || !grip.trim()) {
 			return res.status(400).json({message: "notation, tuning, and grip are required string fields"});
 		}
+
+		//
+		console.log("JWT token:", req.headers.authorization);
+		const user = await UserModel.findByAccessToken(req.headers.authorization.split(' ')[1]);
+		console.log("User:", user);
+
+		if(user.role == "user") {
+			await UserModel.insertUserChordRelation(user.id, );
+		}	
 
 		try {
 			const result = await ChordModel.create({ notation: notation.trim(), tuning: tuning.trim(), grip: grip.trim() });

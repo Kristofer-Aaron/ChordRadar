@@ -1,5 +1,5 @@
 import { GripModel } from "../models/gripModel.js";
-import { gripSchema } from "../schemas/gripSchema.js";
+import { GripSchema } from "../schemas/gripSchema.js";
 
 export const GripController = {
 	async getAll(req, res) {
@@ -23,32 +23,38 @@ export const GripController = {
 	},
 
 	async create(req, res) {
-		const { error, value } = gripSchema.validate(req.body);
-		if (error)
-			return res.status(400).json({ error: error.details[0].message });
-
 		try {
-			const newGrip = await GripModel.create(value);
+			const newGrip = await GripModel.create(req.validated);
 			res.status(201).json(newGrip);
 		} catch (err) {
+			if(err && err.code === 'ER_DUP_ENTRY') {
+				return res.status(409).json({ error: 'Grip with this value already exists'})
+			}
 			res.status(500).json({ error: err.message });
 		}
 	},
 
 	async update(req, res) {
-		const { error, value } = gripSchema.validate(req.body);
-		if (error)
-			return res.status(400).json({ error: error.details[0].message });
-
+		const grip = await GripModel.findById(req.params.id);
+		if(!grip) {
+			return res.status(404).json({ error: 'No grip with the given id was found' });
+		}
 		try {
-			const updated = await GripModel.update(req.params.id, value);
+			const updated = await GripModel.update(req.params.id, req.validated);
 			res.json(updated);
 		} catch (err) {
+			if(err && err.code === 'ER_DUP_ENTRY') {
+				return res.status(409).json({ error: 'Grip with this value already exists'})
+			}
 			res.status(500).json({ error: err.message });
 		}
 	},
 
 	async remove(req, res) {
+		const grip = await GripModel.findById(req.params.id);
+		if(!grip) {
+			return res.status(404).json({ error: 'No grip with the given id was found' });
+		}
 		try {
 			const deleted = await GripModel.remove(req.params.id);
 			res.json(deleted);
