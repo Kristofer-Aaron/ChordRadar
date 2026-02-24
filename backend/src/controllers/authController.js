@@ -1,0 +1,454 @@
+import pool from "../config/db.js";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+import UserModel from "../models/userModel.js";
+import sendEmail from "../utils/sendEmail.js";
+import { TokenModel } from "../models/tokenModels.js";
+import { generateQrDataUrl } from "../utils/qrcode.js";
+import QRCode from 'qrcode';
+import { generateTotpSecret, buildOtpAuthUrl, verifyTotp, generateBackupCodes } from "../utils/totp.js";
+
+export const AuthController = {
+
+/**
+ * POST /auth/login/password
+ * Body: { email_address: string, password: string }
+ *
+ * Returns: { ok: true, token: string } on success.
+ * Errors use generic "Invalid credentials" to avoid leaking whether the email exists or not.
+ */
+async login(req, res) {
+  try {
+    const { email_address, password } = req.body || {};
+
+    // 2) Load user by email (generic error if not found)
+    const user = await UserModel.findByEmail(email_address);
+    if (!user) {
+      // Avoid user enumeration
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Optional: block re-login if you enforce single active session
+    // If you allow multiple sessions, you can remove this block.
+    const existing = await TokenModel.findUserToken(user.id, 'api_access');
+    if (existing) {
+      return res.status(400).json({ error: 'Already logged in' });
+    }
+
+    const passwordOk = await bcrypt.compare(password, user.password_hash);
+    if (!passwordOk) {
+      // Avoid leaking whether the email exists or not
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // 4) Issue JWT and persist api_access token
+    const jwtPayload = { id: user.id, role: user.role };
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      // Misconfiguration guard
+      return res.status(500).json({ error: 'Server config error' });
+    }
+
+    const accessToken = jwt.sign(jwtPayload, secret, {
+      algorithm: 'HS256',
+      expiresIn: '1h', // adjust to your policy
+    });
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
+    await TokenModel.insertUserToken(
+      user.id,
+      accessToken,
+      'api_access',
+      now,
+      expiresAt
+    );
+
+    // 5) Success
+    return res.status(200).json({ ok: true, token: accessToken });
+  } catch (err) {
+    console.error('[loginWithPassword] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+},
+
+async loginTotp(req, res) {
+  try {
+    const { email_address, totp_token } = req.body || {};
+
+    const email = email_address.trim().toLowerCase();
+    const code = totp_token.trim();
+
+    // 2) Load user (do not reveal if not found)
+    const user = await UserModel.findByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (user.two_factor_enabled == 0) {
+      return res.status(401).json({ error: 'TOTP login is disabled' });
+    }
+
+    // Optional: disallow multiple concurrent sessions. Remove if you allow multi-sessions.
+    const existing = await TokenModel.findUserToken(user.id, 'api_access');
+    if (existing) {
+      return res.status(400).json({ error: 'Already logged in' });
+    }
+
+    // 3) Verify TOTP against stored Base32 secret
+    const secret = user.two_factor_secret;
+    const isValid = verifyTotp({ token: code, secret });
+    if (!isValid) {
+      // Add rate limiting at the route level to slow brute force (see notes below)
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // 4) Issue JWT + persist api_access token
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return res.status(500).json({ error: 'Server config error' });
+    }
+
+    const jwtPayload = { id: user.id, role: user.role };
+    const accessToken = jwt.sign(jwtPayload, jwtSecret, {
+      algorithm: 'HS256',
+      expiresIn: '1h', // adjust to your policy
+    });
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+    await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
+
+    // 5) Success
+    return res.status(200).json({ ok: true, token: accessToken });
+  } catch (err) {
+    console.error('[loginWithTotp] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+},
+
+  async logout(req, res) {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      const payload = req.user; // set by authenticate
+
+      //Check if user has an active session
+     const result = await TokenModel.findTokenString(token, 'api_access');
+      if (result == null) {
+        return res.status(404).json({
+          error: "Session not found or already logged out",
+          code: "SESSION_NOT_FOUND",
+        });
+      }
+
+      //Delete access token on logout
+      await TokenModel.deleteUserToken(payload.id, 'api_access');
+      return res.status(200).json({ message: "Logout successful" });
+    } catch {
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  async register(req, res) {
+    try {
+      const {
+        user_name,
+        first_name,
+        last_name,
+        email_address,
+        password,
+        preferences
+      } = req.body;
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      const now = new Date();
+
+      //Insert new record after validating the credentials given by the user
+     const result = await UserModel.create({user_name: user_name, first_name: first_name, last_name: last_name, email_address: email_address, password_hash: passwordHash, password_changed_at: now, account_created_at: now, last_login_at: now, preferences: preferences});
+      const userId = result.id;
+
+      // Generate and insert email verification token
+      const emailTokenExpiration = parseInt(process.env.EMAIL_TOKEN_EXPIRATION || "86400", 10);
+      const emailToken = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + emailTokenExpiration * 1000);
+     await TokenModel.insertUserToken(userId, emailToken, 'email_verification', now, expiresAt);
+
+     //Send verification email
+      const verificationLink = `http://chordradar.akos.local/auth/verify?token=${emailToken}`;
+      await sendEmail(
+        email_address,
+        "Verify your email",
+        `
+          <h1>Email Verification</h1>
+          <p>Click the link below to verify your email:</p>
+          <a href="${verificationLink}">${verificationLink}</a>
+        `
+      );
+
+      return res.status(201).json({
+        message: "User registered successfully. Please check your email to verify your account.",
+        user: {
+          id: userId,
+          user_name,
+          first_name,
+          last_name,
+          email_address,
+          role: "user",
+          status: "pending",
+        },
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  },
+
+  async verify(req, res) {
+    const { token } = req.validatedQuery;
+    try {
+      //Check for existing and valid verification token
+     const rows = await TokenModel.findTokenString(token, 'email_verification');
+      if (rows == null) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+      const { user_id, expires_at } = rows; //object DESTRUCTURING
+      if (new Date() > expires_at) {
+        return res.status(400).json({ message: "Token expired" });
+      }
+
+      //Update user data and remove verification token
+      await pool.query(
+        `UPDATE users SET email_verified = 1, status = 'active' WHERE id = ?`,
+        [user_id]
+      );
+     await TokenModel.consumeTokenString(token, 'email_verification');
+
+      // Issue API token after successful registration
+      const apiTokenExpiration = parseInt(process.env.API_TOKEN_EXPIRATION || "3600", 10);
+      const apiToken = jwt.sign({ id: user_id, role: 'user' }, process.env.JWT_SECRET, {
+        expiresIn: `${apiTokenExpiration}s`,
+      });
+      const now = new Date();
+      const apiExpiresAt = new Date(now.getTime() + apiTokenExpiration * 1000);
+     await TokenModel.insertUserToken(user_id, apiToken, 'api_access', now, apiExpiresAt)
+
+      return res.json({
+        message: "Email verified successfully",
+        token: apiToken,
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  },
+
+// Enroll the currently authenticated user into TOTP 2FA (no admin override)
+async twoFaEnroll(req, res) {
+  try {
+    const authUser = req.user;
+
+    // Always operate on the authenticated user
+    const targetId = String(authUser.id);
+
+    // Fetch current user
+    const user = await UserModel.findById(targetId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Generate TOTP secret + otpauth URL + QR
+    const secret = generateTotpSecret();
+    const issuer = process.env.APP_NAME || 'MyApp';
+    const label = user.email_address || user.user_name || String(user.id); // prefer email if present
+    const otpauthUrl = buildOtpAuthUrl({ secret, label, issuer });
+    const qrDataUrl = await generateQrDataUrl(otpauthUrl);
+
+    // Store the secret now; keep 2FA disabled until confirmation code is verified
+    const updated = await UserModel.updateTwoFactorSecret(targetId, secret);
+    if (!updated) {
+      return res.status(500).json({ error: 'Failed to set 2FA secret' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      qr: qrDataUrl,
+      otpauth_url: otpauthUrl,
+      message: 'Scan the QR code in your authenticator app and submit a code to confirm.'
+    });
+  } catch (err) {
+    console.error('[twoFaEnroll] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+},
+
+
+async getQrPng(req, res) {
+    try {
+      const authUserId = req.user?.id;
+
+      // Load the caller's own record
+      const user = await UserModel.findById(authUserId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // The QR encodes the TOTP secret; only generate if a secret exists
+      const secret = user.two_factor_secret;
+      if (!secret) {
+        // You can return 404, or 409 (Conflict) if you want to signal "enrollment not started"
+        return res.status(404).json({ error: '2FA not enrolled for this user' });
+      }
+
+      const issuer = process.env.APP_NAME || 'MyApp';
+      const label = user.email_address || user.user_name || `user-${user.id}`;
+
+      // Build the otpauth URL that Google Authenticator & friends understand
+      const otpauthUrl = buildOtpAuthUrl({ secret, label, issuer });
+
+      // Render a PNG buffer
+      const pngBuffer = await QRCode.toBuffer(otpauthUrl, {
+        type: 'png',
+        margin: 2,
+        width: 320, // adjust to taste
+        color: { dark: '#000000', light: '#ffffff' }
+      });
+
+      // Security headers — this image embeds a secret
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Length', pngBuffer.length);
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.setHeader('Pragma', 'no-cache');
+
+      return res.status(200).send(pngBuffer);
+    } catch (err) {
+      console.error('[TwoFAController.getQrPng] error:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  },
+  
+
+
+// Confirm TOTP 2FA for the currently authenticated user
+async twoFaConfirm(req, res) {
+  try {
+    const authUser = req.user;
+
+    // Always operate on the authenticated user
+    const targetId = String(authUser.id);
+
+    // Load current user
+    const user = await UserModel.findById(targetId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Ensure secret exists (enrollment was started)
+    const secret = user.two_factor_secret;
+    if (!secret) {
+      return res.status(400).json({ error: 'No 2FA secret to confirm' });
+    }
+
+    // Verify the 6-digit TOTP (accept body.token or body.code for flexibility)
+    const code = req.body?.token ?? req.body?.code;
+    if (!code) {
+      return res.status(400).json({ error: 'Missing 2FA code' });
+    }
+
+    const ok = verifyTotp({ token: String(code), secret });
+    if (!ok) {
+      return res.status(422).json({ error: 'Invalid 2FA code' });
+    }
+
+    // Enable 2FA
+    const enabled = await UserModel.enableTwoFactor(targetId);
+    if (!enabled) {
+      return res.status(500).json({ error: 'Failed to enable 2FA' });
+    }
+
+    // Generate and persist backup codes (JSON)
+    const backups = generateBackupCodes();
+    const saved = await UserModel.setBackupCodes(targetId, JSON.stringify(backups));
+    if (!saved) {
+      return res.status(500).json({ error: 'Failed to store backup codes' });
+    }
+
+    // Self-only flow: safe to return backup codes directly
+    return res.status(200).json({
+      ok: true,
+      message: 'Two-factor authentication enabled.',
+      backup_codes: backups
+    });
+  } catch (err) {
+    console.error('[twoFaConfirm] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+},
+
+
+async twoFaDisable(req, res) {
+  try {
+    const authUser = req.user;
+    const targetId = String(authUser.id);
+    const user = await UserModel.findById(targetId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Idempotent behavior: If already disabled, return success
+    if (!user.two_factor_enabled && !user.two_factor_secret) {
+      return res.status(200).json({ ok: true, message: 'Two-factor authentication already disabled.' });
+    }
+
+    const { password, totp_token, backupCode } = req.body || {};
+    let verified = false;
+
+    // 1) Verify via password (preferred if available)
+    if (!verified && typeof password === 'string' && password.trim().length > 0) {
+      if (!user.password_hash) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      const ok = await bcrypt.compare(password.trim(), user.password_hash);
+      if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+      verified = true;
+    }
+
+    // 2) Verify via current TOTP (6-digit)
+    if (!verified && typeof totp_token === 'string' && totp_token.trim().length > 0) {
+      const code = totp_token.trim();
+      // Use your existing helper or otplib/speakeasy under the hood
+      const ok = verifyTotp({ token: code, secret: user.two_factor_secret });
+      if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+      verified = true;
+    }
+
+    // 3) Verify via backup code (consume on success)
+    if (!verified && typeof backupCode === 'string' && backupCode.trim().length > 0) {
+      const provided = backupCode.trim();
+      const backups = JSON.parse(user.two_factor_backup || '[]');
+      const idx = backups.findIndex(c => timingSafeEqual(c, provided));
+      if (idx === -1) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      // Consume the used backup code
+      backups.splice(idx, 1);
+      await UserModel.setBackupCodes(user.id, JSON.stringify(backups));
+      verified = true;
+    }
+
+    if (!verified) {
+      return res.status(400).json({
+        error: 'Provide password, a valid TOTP code, or a backup code to disable 2FA'
+      });
+    }
+
+    // Disable 2FA and clear secrets/backups
+    const disabled = await UserModel.disableTwoFactor(user.id); // should set two_factor_enabled=false
+    // If you don't have disableTwoFactor, you can flip the flag via a generic update
+
+    return res.status(200).json({
+      ok: true,
+      message: 'Two-factor authentication disabled.'
+    });
+  } catch (err) {
+    console.error('[disableTwoFa] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+},
+};

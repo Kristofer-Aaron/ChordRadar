@@ -1,0 +1,119 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Chord {
+  id          Int                 @id @default(autoincrement())
+  tuning_id   Int
+  grip_id     Int
+  notation_id Int
+  grip        Grip                @relation(fields: [grip_id], references: [id], onUpdate: Restrict)
+  notation    Notation            @relation(fields: [notation_id], references: [id], onUpdate: Restrict)
+  tuning      Tuning              @relation(fields: [tuning_id], references: [id], onUpdate: Restrict)
+  users       UserChordRelation[]
+
+  @@index([grip_id], map: "chords_grip_id_fkey")
+  @@index([notation_id], map: "chords_notation_id_fkey")
+  @@index([tuning_id], map: "chords_tuning_id_fkey")
+  @@map("chords")
+}
+
+model Notation {
+  id     Int     @id @default(autoincrement())
+  value  String  @unique @db.VarChar(16)
+  chords Chord[]
+
+  @@map("notations")
+}
+
+model Tuning {
+  id     Int     @id @default(autoincrement())
+  value  String  @unique @db.VarChar(8)
+  chords Chord[]
+
+  @@map("tunings")
+}
+
+model Grip {
+  id      Int     @id @default(autoincrement())
+  strings String  @unique @db.VarChar(8)
+  chords  Chord[]
+
+  @@map("grips")
+}
+
+model User {
+  id                  Int                 @id @default(autoincrement())
+  user_name           String              @db.VarChar(16)
+  first_name          String              @db.VarChar(16)
+  last_name           String              @db.VarChar(32)
+  email_address       String              @unique @db.VarChar(255)
+  email_verified      Boolean             @default(false)
+  password_hash       String              @db.VarChar(255)
+  password_changed_at DateTime
+  two_factor_enabled  Boolean             @default(false)
+  two_factor_method   TwoFactorMethod?
+  two_factor_secret   String?             @db.VarChar(255)
+  two_factor_backup   String?             @db.LongText
+  role                Role                @default(user)
+  status              Status              @default(pending)
+  account_created_at  DateTime            @default(now())
+  last_login_at       DateTime            @updatedAt
+  preferences         String              @db.LongText
+  chords              UserChordRelation[]
+  tokens              UserToken[]
+
+  @@map("users")
+}
+
+model UserToken {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  token      String    @db.VarChar(255)
+  type       TokenType
+  created_at DateTime  @default(now())
+  expires_at DateTime
+  user       User      @relation(fields: [user_id], references: [id], onUpdate: Restrict)
+
+  @@index([user_id], map: "user_tokens_user_id_fkey")
+  @@map("user_tokens")
+}
+
+model UserChordRelation {
+  user_id  Int
+  chord_id Int
+  chord    Chord @relation(fields: [chord_id], references: [id], onUpdate: Restrict)
+  user     User  @relation(fields: [user_id], references: [id], onUpdate: Restrict)
+
+  @@id([user_id, chord_id])
+  @@index([chord_id], map: "user_chord_relations_chord_id_fkey")
+  @@map("user_chord_relations")
+}
+
+enum TwoFactorMethod {
+  email
+  totp
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum Status {
+  active
+  pending
+  suspended
+}
+
+enum TokenType {
+  email_verification
+  password_reset
+  api_access
+}
