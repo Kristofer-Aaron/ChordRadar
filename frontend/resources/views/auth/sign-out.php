@@ -1,11 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>Sign out - ChordRadar</title>
+<?php
+// --- 1. Page-specific settings ---
+$title = "Sign Out - ChordRadar";
+$navbarType = "none"; // simplified navbar for auth pages
+$stylesheets = [];
+$scripts = ["theme-toggle.js"]; // optional page-specific JS
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="d-flex align-items-center justify-content-center min-vh-100 bg-body-secondary">
+// --- 2. Sign out logic ---
+// Clear auth token cookie
+if (isset($_COOKIE['authToken'])) {
+    setcookie('authToken', '', time() - 3600, "/"); // expire cookie
+}
+
+// Optional: pass JS flag to clear sessionStorage token if needed
+$clearSessionToken = true;
+
+// --- 3. Capture page content ---
+ob_start();
+?>
+
+<div class="d-flex align-items-center justify-content-center min-vh-100 bg-body-secondary">
     <div class="text-center">
         <div class="spinner-border mb-3" role="status">
             <span class="visually-hidden">Signing out...</span>
@@ -13,27 +26,22 @@
         <h3>Signing out...</h3>
         <p class="text-muted">Please wait while we sign you out.</p>
     </div>
+</div>
 
-    <script src="assets/js/auth.js"></script>
-    <script>
-        async function logout() {
-            try {
-                await AuthModule.logout();
-            } catch (error) {
-                console.error('Logout error:', error);
-                AuthModule.clear();
-            }
-            
-            // Redirect to sign-in page
-            setTimeout(() => {
-                window.location.href = 'index.php';
-            }, 1200);
-        }
+<script>
+<?php if (!empty($clearSessionToken)): ?>
+// Clear sessionStorage auth token if used
+sessionStorage.removeItem('authToken');
+<?php endif; ?>
 
-        // Start logout when page loads
-        window.addEventListener('load', logout);
-    </script>
-</body>
+// Redirect to sign-in page after 1 second
+setTimeout(() => {
+    window.location.href = 'index.php?page=auth/sign-in';
+}, 1000);
+</script>
 
-<script src="assets/js/theme-toggle.js"></script>
-</html>
+<?php
+$content = ob_get_clean();
+
+// --- 4. Load the template ---
+require __DIR__ . '/../../layouts/template.php';

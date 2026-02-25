@@ -1,58 +1,92 @@
 <?php
-    $navbarOptions = $navbarOptions ?? [];
+$navbarOptions = $navbarOptions ?? [];
+
+// Helper function to generate router links
+function route($path) {
+    return "index.php?page=" . urlencode($path);
+}
+
+// --- Determine auth state ---
+$isLoggedIn = false;
+
+// Check cookie (server-side) for auth token
+if (!empty($_COOKIE['authToken'])) {
+    $isLoggedIn = true;
+}
+
+// Optional: allow overriding via $navbarOptions
+$showSignIn = $navbarOptions['showSignInButton'] ?? (!$isLoggedIn);
+$showSignUp = $navbarOptions['showSignUpButton'] ?? (!$isLoggedIn);
+$showSignOut = $navbarOptions['showSignOutButton'] ?? ($isLoggedIn);
+$showGuitarSettings = $navbarOptions['showGuitarSettingsButton'] ?? $isLoggedIn;
 ?>
 
 <nav class="navbar navbar-expand-sm px-4 border-bottom bg-body-tertiary">
-    <a class="navbar-brand" href="#">ChordRadar</a>
+    <a class="navbar-brand" href="<?= route('guitar-chords/analyze') ?>">ChordRadar</a>
     
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample02" aria-controls="navbarsExample02" aria-expanded="false" aria-label="Toggle navigation">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
 
-    <div class="collapse navbar-collapse justify-content-end" id="navbarsExample02">
-        <ul class="navbar-nav mr-auto">
-            <li class="nav-item">
-                <button class="btn btn-outline-secondary btn-sm" id="theme-toggle" type="button">
-                    <span id="theme-toggle-label">Dark</span>
-                </button>
-            </li>
+    <div class="collapse navbar-collapse w-100" id="navbarCollapse">
+        <div class="me-auto">
+            <ul class="navbar-nav">
+                <li>
+                    <a class="nav-link" href="<?= route('guitar-chords/analyze') ?>">Analyze Chords</a>
+                </li>
+                <li>
+                    <a class="nav-link" href="<?= route('guitar-chords/explore') ?>">Explore Chords</a>
+                </li>
+            </ul>
+        </div>
 
-            <!-- Guitar Settings Button -->
-            <?php if (!empty($navbarOptions['showGuitarSettingsButton'])): ?>
+        <div class="justify-content-end">
+            <ul class="navbar-nav ms-auto">
+
+                <!-- Theme Toggle Button -->
                 <li class="nav-item">
-                    <button class="btn btn-outline-primary btn-sm ms-2" id="guitar-settings-btn" type="button">
-                        Guitar Settings
+                    <button class="btn btn-outline-secondary btn-sm" id="theme-toggle" type="button">
+                        <span id="theme-toggle-label">Dark</span>
                     </button>
                 </li>
-            <?php endif; ?>
 
-            <!-- Sign in Button -->
-            <?php if (!empty($navbarOptions['showSignInButton'])): ?>
-                <li class="nav-item">
-                    <a class="btn btn-outline-secondary btn-sm ms-2" href="./sign-in.php" role="button">
-                        Sign in
-                    </a>
-                </li>
-            <?php endif; ?>
+                <!-- Guitar Settings Button -->
+                <?php if ($showGuitarSettings): ?>
+                    <li class="nav-item">
+                        <a class="btn btn-outline-primary btn-sm ms-2" href="<?= route('guitar-settings') ?>" role="button">
+                            Guitar Settings
+                        </a>
+                    </li>
+                <?php endif; ?>
 
-            <!-- Sign out Button -->
-            <?php if (!empty($navbarOptions['showSignOutButton'])): ?>
-                <li class="nav-item">
-                    <a class="btn btn-outline-secondary btn-sm ms-2" href="./sign-out.php" role="button">
-                        Sign out
-                    </a>
-                </li>
-            <?php endif; ?>
+                <!-- Sign In Button -->
+                <?php if ($showSignIn): ?>
+                    <li class="nav-item">
+                        <a class="btn btn-outline-secondary btn-sm ms-2" href="<?= route('auth/sign-in') ?>" role="button">
+                            Sign in
+                        </a>
+                    </li>
+                <?php endif; ?>
 
-            <!-- Sign up Button -->
-            <?php if (!empty($navbarOptions['showSignUpButton'])): ?>
-                <li class="nav-item">
-                    <a class="btn btn-outline-primary btn-sm ms-2" href="./sign-up.php" role="button">
-                        Sign up
-                    </a>
-                </li>
-            <?php endif; ?>
+                <!-- Sign Out Button -->
+                <?php if ($showSignOut): ?>
+                    <li class="nav-item">
+                        <a class="btn btn-outline-secondary btn-sm ms-2" href="<?= route('auth/sign-out') ?>" role="button">
+                            Sign out
+                        </a>
+                    </li>
+                <?php endif; ?>
 
-        </ul>
+                <!-- Sign Up Button -->
+                <?php if ($showSignUp): ?>
+                    <li class="nav-item">
+                        <a class="btn btn-outline-primary btn-sm ms-2" href="<?= route('auth/sign-up') ?>" role="button">
+                            Sign up
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+            </ul>
+        </div>
     </div>
 </nav>
