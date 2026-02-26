@@ -20,6 +20,14 @@ const UserModel = {
 		);
 		return rows[0];
 	},
+
+	async findByAccessToken(token) {
+		const [rows] = await pool.query(
+			"SELECT * FROM users JOIN user_tokens ON user_tokens.user_id = users.id HAVING user_tokens.token = ?",
+			[token]
+		);
+		return rows[0];
+	},
 	
 	async create(data) {
 		const now = new Date();

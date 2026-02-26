@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 
 async function main() {
 	const filePath = path.join(__dirname, "../data", "chords.txt");
-	const lines = fs.readFileSync(filePath, "utf-8").split("\n").filter(Boolean).slice(1);
+	const lines = fs.readFileSync(filePath, "utf-8").split("\r\n").filter(Boolean).slice(1);
 
 	for (const line of lines) {
 		const [gripStr, tuningStr, chordName] = line.split("/");

@@ -119,6 +119,8 @@ model UserChordRelation {
   chord_id  Int
   chord     Chord @relation(fields: [chord_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
+  @@unique([user_id, chord_id])
+
   @@id([user_id, chord_id])
   @@map("user_chord_relations")
 }

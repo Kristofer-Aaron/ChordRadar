@@ -1,5 +1,4 @@
 import { GripModel } from "../models/gripModel.js";
-import { GripSchema } from "../schemas/gripSchema.js";
 
 export const GripController = {
 	async getAll(req, res) {
@@ -28,7 +27,7 @@ export const GripController = {
 			res.status(201).json(newGrip);
 		} catch (err) {
 			if(err && err.code === 'ER_DUP_ENTRY') {
-				return res.status(409).json({ error: 'Grip with this value already exists'})
+				return res.status(409).json({ error: 'Grip with this value already exists'});
 			}
 			res.status(500).json({ error: err.message });
 		}

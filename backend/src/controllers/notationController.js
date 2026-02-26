@@ -1,5 +1,4 @@
 import { NotationModel } from "../models/notationModel.js";
-import { notationSchema } from "../schemas/notationSchema.js";
 
 export const NotationController = {
   async getAll(req, res) {
@@ -23,32 +22,38 @@ export const NotationController = {
   },
 
   async create(req, res) {
-    const { error, value } = notationSchema.validate(req.body);
-    if (error)
-      return res.status(400).json({ error: error.details[0].message });
-
     try {
-      const newNotation = await NotationModel.create(value);
+      const newNotation = await NotationModel.create(req.validated);
       res.status(201).json(newNotation);
     } catch (err) {
+      if(err && err.code === 'ER_DUP_ENTRY') {
+				return res.status(409).json({ error: 'Notation with this value already exists'})
+			}
       res.status(500).json({ error: err.message });
     }
   },
 
   async update(req, res) {
-    const { error, value } = notationSchema.validate(req.body);
-    if (error)
-      return res.status(400).json({ error: error.details[0].message });
-
+    const notation = await NotationModel.findById(req.params.id);
+    if(!notation) {
+      return res.status(404).json({ error: 'No notation with the given id was found' });
+    }
     try {
-      const updated = await NotationModel.update(req.params.id, value);
+      const updated = await NotationModel.update(req.params.id, req.validated);
       res.json(updated);
     } catch (err) {
+      if(err && err.code === 'ER_DUP_ENTRY') {
+				return res.status(409).json({ error: 'Notation with this value already exists'})
+			}
       res.status(500).json({ error: err.message });
     }
   },
 
   async remove(req, res) {
+    const notation = await NotationModel.findById(req.params.id);
+    if(!notation) {
+      return res.status(404).json({ error: 'No notation with the given id was found' });
+    }
     try {
       const deleted = await NotationModel.remove(req.params.id);
       res.json(deleted);

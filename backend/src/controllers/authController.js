@@ -10,145 +10,107 @@ import QRCode from 'qrcode';
 import { generateTotpSecret, buildOtpAuthUrl, verifyTotp, generateBackupCodes } from "../utils/totp.js";
 
 export const AuthController = {
+  async login(req, res) {
+    try {
+      const { email_address, password } = req.body || {};
+      if (!email_address || !password) { return res.status(400).json({ error: 'Missing credentials' }); }
 
-async login(req, res) {
-  try {
-    const { email_address, password } = req.body || {};
-    if (!email_address || !password) {
-      return res.status(400).json({ error: 'Missing credentials' });
+      // Load user by email (generic error if not found)
+      const user = await UserModel.findByEmail(email_address);
+      if (!user) { return res.status(401).json({ error: 'Invalid credentials' }); }
+
+      // Validate password (avoid leaking existence of user)
+      const passwordOk = await bcrypt.compare(password, user.password_hash);
+      if (!passwordOk) { return res.status(401).json({ error: 'Invalid credentials' }); }
+
+      // JWT configuration guard
+      const secret = process.env.JWT_SECRET;
+      if (!secret) { return res.status(500).json({ error: 'Server config error' }); }
+
+      // Check for existing active api_access token
+      const existing = await TokenModel.findUserToken(user.id, 'api_access');
+
+      // Issue a fresh JWT for both new logins and renewals
+      const jwtPayload = { id: user.id, role: user.role };
+      const accessToken = jwt.sign(jwtPayload, secret, {
+        algorithm: 'HS256',
+        expiresIn: '1h',
+      });
+
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
+
+      await TokenModel.deleteUserToken(user.id, 'api_access');
+      await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
+
+      return res.status(200).json({
+        ok: true,
+        token: accessToken,
+        renewed: Boolean(existing),
+      });
+    } catch (err) {
+      console.error('[loginWithPassword] error:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
     }
+  },
 
-    // 1) Load user by email (generic error if not found)
-    const user = await UserModel.findByEmail(email_address);
-    if (!user) {
-      // Avoid user enumeration
-      return res.status(401).json({ error: 'Invalid credentials' });
+  async loginTotp(req, res) {
+    try {
+      const { email_address, totp_token } = req.body || {};
+
+      const email = String(email_address).trim().toLowerCase();
+      const code = String(totp_token).trim();
+
+      // Load user (do not reveal if not found)
+      const user = await UserModel.findByEmail(email);
+      if (!user) { return res.status(401).json({ error: 'Invalid credentials' }); }
+
+      // Ensure TOTP is enabled for this account
+      if (!user.two_factor_enabled) { return res.status(401).json({ error: 'TOTP login is disabled' }); }
+
+      // Verify TOTP against stored Base32 secret
+      const isValid = verifyTotp({ token: code, secret: user.two_factor_secret });
+      if (!isValid) { return res.status(401).json({ error: 'Invalid credentials' }); }
+
+      // JWT configuration guard
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) { return res.status(500).json({ error: 'Server config error' }); }
+
+      // Check for existing active api_access token (to report renewal)
+      const existing = await TokenModel.findUserToken(user.id, 'api_access');
+
+      // 6) Issue a fresh JWT (used for both first-time and renewal)
+      const jwtPayload = { id: user.id, role: user.role };
+      const accessToken = jwt.sign(jwtPayload, jwtSecret, {
+        algorithm: 'HS256',
+        expiresIn: '1h',
+      });
+
+      // Persist new api_access token; enforce one-live-token-per-type
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+      await TokenModel.deleteUserToken(user.id, 'api_access');
+      await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
+
+      // Success (include whether this was a renewal)
+      return res.status(200).json({
+        ok: true,
+        token: accessToken,
+        renewed: Boolean(existing),
+      });
+    } catch (err) {
+      console.error('[loginWithTotp] error:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
     }
-
-    // 2) Validate password (avoid leaking existence of user)
-    const passwordOk = await bcrypt.compare(password, user.password_hash);
-    if (!passwordOk) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // 3) JWT configuration guard
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      return res.status(500).json({ error: 'Server config error' });
-    }
-
-    // 4) Check for existing active api_access token
-    const existing = await TokenModel.findUserToken(user.id, 'api_access');
-
-    // 5) Issue a fresh JWT for both new logins and renewals
-    const jwtPayload = { id: user.id, role: user.role };
-    const accessToken = jwt.sign(jwtPayload, secret, {
-      algorithm: 'HS256',
-      expiresIn: '1h', // adjust to your policy
-    });
-
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
-
-    // 6) Enforce one-live-token policy and persist new api_access token
-    //    - If there was an existing token, we "renew" by deleting all and inserting new.
-    await TokenModel.deleteUserToken(user.id, 'api_access');
-    await TokenModel.insertUserToken(
-      user.id,
-      accessToken,
-      'api_access',
-      now,
-      expiresAt
-    );
-
-    // 7) Success (include whether this was a renewal)
-    return res.status(200).json({
-      ok: true,
-      token: accessToken,
-      renewed: Boolean(existing),
-    });
-  } catch (err) {
-    console.error('[loginWithPassword] error:', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
-  }
-},
-
-async loginTotp(req, res) {
-try {
-  const { email_address, totp_token } = req.body || {};
-
-  // 0) Basic input validation
-  if (!email_address || !totp_token) {
-    return res.status(400).json({ error: 'Missing credentials' });
-  }
-  const email = String(email_address).trim().toLowerCase();
-  const code = String(totp_token).trim();
-
-  // 1) Load user (do not reveal if not found)
-  const user = await UserModel.findByEmail(email);
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  // 2) Ensure TOTP is enabled for this account
-  if (!user.two_factor_enabled) {
-    return res.status(401).json({ error: 'TOTP login is disabled' });
-  }
-
-  // 3) Verify TOTP against stored Base32 secret
-  const isValid = verifyTotp({ token: code, secret: user.two_factor_secret });
-  if (!isValid) {
-    // Consider route-level rate limiting to deter brute-force attempts
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  // 4) JWT configuration guard
-  const jwtSecret = process.env.JWT_SECRET;
-  if (!jwtSecret) {
-    return res.status(500).json({ error: 'Server config error' });
-  }
-
-  // 5) Check for existing active api_access token (to report renewal)
-  const existing = await TokenModel.findUserToken(user.id, 'api_access'); // may be null
-
-  // 6) Issue a fresh JWT (used for both first-time and renewal)
-  const jwtPayload = { id: user.id, role: user.role };
-  const accessToken = jwt.sign(jwtPayload, jwtSecret, {
-    algorithm: 'HS256',
-    expiresIn: '1h', // adjust to your policy
-  });
-
-  // 7) Persist new api_access token; enforce one-live-token-per-type
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
-  await TokenModel.deleteUserToken(user.id, 'api_access'); // remove any existing tokens of this type
-  await TokenModel.insertUserToken(
-    user.id,
-    accessToken,
-    'api_access',
-    now,
-    expiresAt
-  );
-
-  // 8) Success (include whether this was a renewal)
-  return res.status(200).json({
-    ok: true,
-    token: accessToken,
-    renewed: Boolean(existing),
-  });
-} catch (err) {
-  console.error('[loginWithTotp] error:', err);
-  return res.status(500).json({ error: 'Internal Server Error' });
-}
-},
+  },
 
   async logout(req, res) {
     try {
       const token = req.headers.authorization?.split(" ")[1];
-      const payload = req.user; // set by authenticate
+      const payload = req.user;
 
-      //Check if user has an active session
-     const result = await TokenModel.findTokenString(token, 'api_access');
+      // Check if user has an active session
+      const result = await TokenModel.findTokenString(token, 'api_access');
       if (result == null) {
         return res.status(404).json({
           error: "Session not found or already logged out",
@@ -156,7 +118,7 @@ try {
         });
       }
 
-      //Delete access token on logout
+      // Delete access token on logout
       await TokenModel.deleteUserToken(payload.id, 'api_access');
       return res.status(200).json({ message: "Logout successful" });
     } catch {
@@ -166,20 +128,13 @@ try {
 
   async register(req, res) {
     try {
-      const {
-        user_name,
-        first_name,
-        last_name,
-        email_address,
-        password,
-        preferences
-      } = req.body;
+      const { user_name, first_name, last_name, email_address, password, preferences } = req.body;
 
       const passwordHash = await bcrypt.hash(password, 10);
       const now = new Date();
 
       //Insert new record after validating the credentials given by the user
-     const result = await UserModel.create({user_name: user_name, first_name: first_name, last_name: last_name, email_address: email_address, password_hash: passwordHash, password_changed_at: now, account_created_at: now, last_login_at: now, preferences: preferences});
+     const result = await UserModel.create({ user_name: user_name, first_name: first_name, last_name: last_name, email_address: email_address, password_hash: passwordHash, password_changed_at: now, account_created_at: now, last_login_at: now, preferences: preferences });
       const userId = result.id;
 
       // Generate and insert email verification token
@@ -221,30 +176,22 @@ try {
     const { token } = req.validatedQuery;
     try {
       //Check for existing and valid verification token
-     const rows = await TokenModel.findTokenString(token, 'email_verification');
-      if (rows == null) {
-        return res.status(400).json({ message: "Invalid or expired token" });
-      }
+      const rows = await TokenModel.findTokenString(token, 'email_verification');
+      if (rows == null) { return res.status(400).json({ message: "Invalid or expired token" }); }
       const { user_id, expires_at } = rows; //object DESTRUCTURING
-      if (new Date() > expires_at) {
-        return res.status(400).json({ message: "Token expired" });
-      }
+      if (new Date() > expires_at) { return res.status(400).json({ message: "Token expired" }); }
 
       //Update user data and remove verification token
-      await pool.query(
-        `UPDATE users SET email_verified = 1, status = 'active' WHERE id = ?`,
-        [user_id]
-      );
-     await TokenModel.consumeTokenString(token, 'email_verification');
+      await pool.query(`UPDATE users SET email_verified = 1, status = 'active' WHERE id = ?`,
+        [user_id]);
+      await TokenModel.consumeTokenString(token, 'email_verification');
 
       // Issue API token after successful registration
       const apiTokenExpiration = parseInt(process.env.API_TOKEN_EXPIRATION || "3600", 10);
-      const apiToken = jwt.sign({ id: user_id, role: 'user' }, process.env.JWT_SECRET, {
-        expiresIn: `${apiTokenExpiration}s`,
-      });
+      const apiToken = jwt.sign({ id: user_id, role: 'user' }, process.env.JWT_SECRET, { expiresIn: `${apiTokenExpiration}s` });
       const now = new Date();
       const apiExpiresAt = new Date(now.getTime() + apiTokenExpiration * 1000);
-     await TokenModel.insertUserToken(user_id, apiToken, 'api_access', now, apiExpiresAt)
+      await TokenModel.insertUserToken(user_id, apiToken, 'api_access', now, apiExpiresAt)
 
       return res.json({
         message: "Email verified successfully",

@@ -24,10 +24,8 @@ export const GripModel = {
 
 	async update(id, data) {
 		const { strings } = data;
-		await pool.query("UPDATE grips SET strings = ? WHERE id = ?", [
-			strings,
-			id,
-		]);
+		await pool.query("UPDATE grips SET strings = ? WHERE id = ?",
+			[strings, id,]);
 		return this.findById(id);
 	},
 

@@ -1,5 +1,5 @@
 import Joi from "joi";
 
-export const notationSchema = Joi.object({
-	value: Joi.string().required(),
+export const NotationSchema = Joi.object({
+	value: Joi.string().max(16).required(),
 });
