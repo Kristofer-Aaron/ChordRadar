@@ -1,5 +1,4 @@
 import { TuningModel } from "../models/tuningModel.js";
-import { TuningSchema } from "../schemas/tuningSchema.js";
 
 export const TuningController = {
 	async getAll(req, res) {
