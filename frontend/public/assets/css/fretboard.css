@@ -8,38 +8,48 @@
 
  /* Hide scrollbar for Chrome, Safari and Opera */
 #fretboardWrapper::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 
 /* Hide scrollbar for IE, Edge and Firefox */
-#fretboardWrapper {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-} 
+/* #fretboardWrapper {
+   -ms-overflow-style: none;
+    scrollbar-width: none;
+} */
 
 #fretboardContainer {
-  margin: 0;
-  padding: 0;
-  box-shadow: 0px 20px 30px rgba(255,255,232,0.2) inset, 0px -20px 30px rgba(0,0,0,0.6) inset;
-  width: fit-content;
-  background-image: url("../images/wood1.png");
+    margin: 0;
+    padding: 0;
+    box-shadow: 0px 20px 30px rgba(255,255,232,0.2) inset, 0px -20px 30px rgba(0,0,0,0.6) inset;
+    width: fit-content;
+    background-image: url("../images/wood1.png");
 }
 
 /*  */
 .fretboardColumn {
-  display: inline-block;
-  margin: 0;
-  padding: 0;
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+}
+
+.nut {
+    display: inline-block;
+    width: 15px;
+    height: 240px;
+    margin: 0;
+    padding: 0;
+    background-image: linear-gradient(to right, burlywood 0%, wheat 25%, cornsilk 100%);
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.6);
 }
 
 .fret {
-  display: inline-block;
-  width: 5px;
-  height: 240px;
-  margin: 0;
-  padding: 0;
-  background-image: linear-gradient(to right, darkgray 0%, whitesmoke 25%, gray 100%);
-  box-shadow: 2px 2px 5px rgba(0,0,0,0.6);
+    display: inline-block;
+    width: 5px;
+    height: 240px;
+    margin: 0;
+    padding: 0;
+    background-image: linear-gradient(to right, darkgray 0%, whitesmoke 25%, gray 100%);
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.6);
 }
 
 /*  */

@@ -1,5 +1,5 @@
 <?php
-$title = "Analyze Chords";
+$title = "Explore Chords";
 
 $navbarOptions = [
     'showGuitarSettingsButton' => false,
@@ -12,8 +12,9 @@ $stylesheets = [
 
 // Scripts
 $scripts = [
+    "generate-fretboard.js",
     "chord-to-grips.js",
-    "generate-fretboard.js"
+    "explore.js"
 ];
 
 
@@ -24,17 +25,14 @@ ob_start();
     <div class="border rounded p-4 bg-body-tertiary">
         <div class="d-flex gap-2 ml-auto mb-3 justify-content-end">
             <!-- <button class="btn btn-outline-secondary">R</button> -->
-            <button class="btn btn-outline-secondary" id="resetButton" aria-label="Reset fretboard">
+            <button class="btn btn-outline-secondary d-none" id="resetButton" aria-label="Reset fretboard">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
                     <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
                     <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
                 </svg>
             </button>
         </div>
-        <div id="fretboardWrapper">
-            <div id="fretboardContainer"></div>
-        </div>
-        <div class="border rounded mt-3 p-3">
+        <div class="border rounded my-3 p-3">
 
             <select class="form-select" id="rootNoteSelect" aria-label="Default select example">
                 <option value="" selected>Select Root note</option>
@@ -96,17 +94,25 @@ ob_start();
                 <option value="B">B</option>
             </select>
 
+
             <div class="my-2">
                 <label for="gripSpanInput">Grip Span</label>
-                <input class="form-control" name="gripSpan" type="number" value="3" id="gripSpanInput" placeholder="Grip span (default 3)">
+                <input class="form-control" name="gripSpan" type="number" value="3" min="1" max="12" id="gripSpanInput" placeholder="Grip span (default 3)">
             </div>
 
             <button class="btn btn-primary" onclick="ExploreChord()">Explore Chord</button>
+        </div>
+        <div id="fretboardWrapper">
+            <div id="fretboardContainer"></div>
+        </div>
+        <div id="possibleGrips" class="border rounded mt-3 p-4 d-flex flex-wrap gap-2 justify-content-center">    
+            <p class="text-muted mb-1">Enter a chord in the selector</p>
         </div>
     </div>
 </main>
 
 <script>
+
     function ExploreChord() {
         const rootNote = document.getElementById('rootNoteSelect').value;
         const tritone = document.getElementById('tritoneSelect').value;
@@ -122,14 +128,49 @@ ob_start();
             gripSpan:gripSpan,
             tuning: ["E", "A", "D", "G", "B", "E"]
         };
-        console.log(JSON.parse(ChordToGrips(JSON.stringify(json))));
+
+        grips = JSON.parse(ChordToGrips(JSON.stringify(json)));
+        renderPossibleGrips(grips);
+    }
+
+    // helper to render results in the display container
+    function renderPossibleGrips(grips) {
+        const container = document.getElementById("possibleGrips");
+        container.innerHTML = "";
+        grips.forEach(grip => {
+            console.log("Rendering grip:", grip);
+            const div = document.createElement('div');
+            div.className = "badge bg-secondary fs-6";
+            div.textContent = grip.join("-");
+            div.style.cursor = "pointer";
+            div.onclick = () => {
+                selectRadios(grip);
+            };
+            container.appendChild(div);
+        });
+    }
+
+    function selectRadios(grip) {
+        // grip is array of fret numbers for each string, -1 for open, 0 for muted
+        grip.forEach((fret, stringIndex) => {
+            if (fret >= 0) {
+                const radio = document.getElementById(`s${stringIndex}f${fret}`);
+                if (radio) {
+                    radio.checked = true;
+                }
+            }
+            if (fret == 'x') {
+                // find all radios for this string and uncheck
+                const radios = document.querySelectorAll(`input[name="s${stringIndex}"]`);
+                radios.forEach(radio => radio.checked = false);
+            }
+        });
     }
 </script>
+
+
 
 <?php
 $content = ob_get_clean();
 
-
-
 require __DIR__ . '/../../layouts/template.php';
-

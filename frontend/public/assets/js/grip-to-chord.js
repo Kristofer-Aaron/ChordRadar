@@ -32,7 +32,6 @@ function GripToChord(grip, tuning, allNotes)
 
         chord = [basenote, tritone, remainders, slashChords];
 
-        console.log(chord); 
         chords.push(chord.join("")); 
     }
     return chords;
@@ -166,5 +165,3 @@ function RotateForRootnote(notes, index)      //rotate for rootnote
     const rotated = notes.slice(index).concat(notes.slice(0, index));
     return rotated;
 }
-
-

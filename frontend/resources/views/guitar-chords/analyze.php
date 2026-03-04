@@ -34,17 +34,90 @@ ob_start();
         <div id="fretboardWrapper">
             <div id="fretboardContainer"></div>
         </div>
-        <div class="border rounded mt-3">
-            <div>
-                <p class="text-muted" id="possibleChords">Possible chords:</p>
-            </div>
-
-            <!-- <div>
-
-            </div> -->
+        <div id="possibleChords" class="border rounded mt-3 p-4 d-flex flex-wrap gap-2 justify-content-center">    
+            <p class="text-muted mb-1">Enter a chord in the fretboard</p>
         </div>
     </div>
 </main>
+
+<script>
+
+    // helper to render results in the display container
+function renderPossibleChords(chords, isMessage = false) {
+    const container = document.getElementById("possibleChords");
+    container.innerHTML = "";
+
+    if (isMessage) {
+        // single message, wrap in span
+        const msg = document.createElement('span');
+        msg.className = "text-info";
+        msg.textContent = chords;
+        container.appendChild(msg);
+        return;
+    }
+
+    if (chords.length === 0) {
+        const msg = document.createElement('span');
+        msg.className = "text-muted";
+        msg.textContent = "Enter a chord in the fretboard";
+        container.appendChild(msg);
+        return;
+    }
+
+    // chords should be an array
+    chords.forEach(chord => {
+        const div = document.createElement('div');
+        div.className = "badge bg-secondary fs-6";
+        div.textContent = chord;
+        container.appendChild(div);
+    });
+}
+
+
+function getRadioValues() {
+    const radios = document.querySelectorAll('input.fretboardRadio');
+    const groupNames = [...new Set([...radios].map(r => r.name))];
+    return groupNames.map(name => {
+        const checked = document.querySelector(`input[name="${name}"]:checked`);
+        return checked ? checked.value : "x";
+    }).reverse();
+}
+
+// Toggle/uncheck radio buttons
+document.addEventListener('click', async (e) => {
+    if (e.target.classList.contains("fretboardRadio")) {
+        const radio = e.target;
+        const group = document.getElementsByName(radio.name);
+        if (radio.wasChecked) {
+            radio.checked = false;
+        }
+
+        group.forEach(r => r.wasChecked = r.checked);
+        
+        const gripPattern = getRadioValues();
+        const gripPatternString = gripPattern.join("");
+
+        const chords = GripToChord(gripPattern, Tuning, NotesFlat);
+        console.log('Calculated chords:', chords);
+        renderPossibleChords(chords);
+    }
+});
+
+document.getElementById('resetButton').addEventListener('click', () => {
+    const radios = document.querySelectorAll('input.fretboardRadio');
+
+    radios.forEach(radio => {
+        radio.checked = false;
+        radio.wasChecked = false;
+    });
+
+    logValues(getRadioValues());
+    const container = document.getElementById("possibleChords");
+    container.innerHTML = "";
+
+}, { passive: true });
+
+</script>
 
 <?php
 $content = ob_get_clean();
