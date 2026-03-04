@@ -12,9 +12,9 @@ router.get('/', ChordController.getAll);
 router.get('/:id', ChordController.getById);
 router.get('/:selector/:selectorValue/tuning/:tuningValue', ChordController.getBySelector);
 
-// Protected routes (admin only)
+// Protected routes
 router.post('/', authenticate, requireActiveToken, validateBody(createChordSchema), ChordController.create);
-router.put('/:id', authenticate, requireActiveToken, ChordController.update);
+router.put('/:id', authenticate, requireActiveToken, requireAdmin, ChordController.update);
 router.patch('/:id', authenticate, requireActiveToken, ChordController.patch);
 router.delete('/:id', authenticate, requireActiveToken, ChordController.remove);
 

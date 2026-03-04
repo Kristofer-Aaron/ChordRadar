@@ -13,6 +13,8 @@ export const AuthController = {
   async login(req, res) {
     try {
       const { email_address, password } = req.body || {};
+      const rememberMe = req.query?.['remember-me'] == "true" ? true : false;
+      console.log("Remember param:", rememberMe);
       if (!email_address || !password) { return res.status(400).json({ error: 'Missing credentials' }); }
 
       // Load user by email (generic error if not found)
@@ -34,11 +36,11 @@ export const AuthController = {
       const jwtPayload = { id: user.id, role: user.role };
       const accessToken = jwt.sign(jwtPayload, secret, {
         algorithm: 'HS256',
-        expiresIn: '1h',
+        expiresIn: rememberMe ? '30d' : '1h',
       });
 
       const now = new Date();
-      const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
+      const expiresAt = rememberMe ? new Date(now.getTime() + process.env.API_TOKEN_EXPIRATION_LONG * 1000) : new Date(now.getTime() + process.env.API_TOKEN_EXPIRATION * 1000);
 
       await TokenModel.deleteUserToken(user.id, 'api_access');
       await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
