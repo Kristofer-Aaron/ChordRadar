@@ -63,6 +63,7 @@ export const ChordController = {
 	async create(req, res) {
 		const { notation, tuning, grip } = req.body ?? {};
 		const user = await UserModel.findByAccessToken(req.headers.authorization.split(' ')[1]);
+		console.log("User ID:", user.user_id);
 		try {
 			const result = await ChordModel.create({ notation: notation.trim(), tuning: tuning.trim(), grip: grip.trim() });
 			if(user.role == "user") {
@@ -72,9 +73,8 @@ export const ChordController = {
 		} catch (err) {
 			if(err && err.code === 'ER_DUP_ENTRY') {
 				if(user.role == "user") {
-					const dup_entry = await ChordModel.findBySelector({ selector: "notation", selectorValue: notation, tuningValue: tuning });
-					console.log("Duplicate chord:", dup_entry[0].id);
-					await ChordModel.insertUserChordRelation(user.user_id, dup_entry[0].id);
+					const dup_entry = (await ChordModel.findBySelector({ selector: "notation", selectorValue: notation, tuningValue: tuning })).find(r => r.grip === grip);
+					await ChordModel.insertUserChordRelation(user.user_id, dup_entry.id);
 				}
 				return res.status(409).json({ error: 'Chord with this notation, tuning and grip already exists'});
 			}
@@ -83,7 +83,7 @@ export const ChordController = {
 		}
 	},
 
-	//
+	/*
 	async update(req, res) {
 		const { error, value } = chordSchema.validate(req.body);
 		if (error)
@@ -96,6 +96,7 @@ export const ChordController = {
 			res.status(err.status || 500).json({ error: err.message });
 		}
 	},
+	*/
 
 	async remove(req, res) {
 		try {

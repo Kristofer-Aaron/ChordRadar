@@ -2,7 +2,7 @@ import pool from "../config/db.js";
 
 export const ChordModel = {
   async findAll({ fields = {} } = {}) {
-    const notationField = fields.notation === "value" ? "TRIM(REPLACE(notations.value, '\r', '')) AS notation" : "chords.notation_id AS notation_id";
+    const notationField = fields.notation === "value" ? "notations.value AS notation" : "chords.notation_id AS notation_id";
     const tuningField = fields.tuning === "value" ? "tunings.value AS tuning" : "tunings.id AS tuning_id";
     const gripField = fields.grip === "value" ? "grips.strings AS grip" : "grips.id AS grip_id";
 
@@ -16,7 +16,7 @@ export const ChordModel = {
   },
 
   async findById({id, fields = {} }) {
-    const notationField = fields.notation === "value" ? "TRIM(REPLACE(notations.value, '\r', '')) AS notation" : "chords.notation_id AS notation_id";
+    const notationField = fields.notation === "value" ? "notations.value AS notation" : "chords.notation_id AS notation_id";
     const tuningField = fields.tuning === "value" ? "tunings.value AS tuning" : "tunings.id AS tuning_id";
     const gripField = fields.grip === "value" ? "grips.strings AS grip" : "grips.id AS grip_id";
 
@@ -31,7 +31,7 @@ export const ChordModel = {
   },
   
   async findBySelector({ selector, selectorValue, tuningValue }) {
-    const select = `SELECT chords.id, TRIM(REPLACE(notations.value, '\r', '')) AS notation, tunings.value AS tuning, grips.strings AS grip FROM chords
+    const select = `SELECT chords.id, notations.value AS notation, tunings.value AS tuning, grips.strings AS grip FROM chords
                     JOIN notations ON chords.notation_id = notations.id
                     JOIN tunings   ON chords.tuning_id   = tunings.id
                     JOIN grips     ON chords.grip_id     = grips.id
@@ -42,7 +42,7 @@ export const ChordModel = {
     // Add selector-specific predicate
     let where = "";
     if (selector === "notation") {
-      where = `AND LOWER(TRIM(REPLACE(notations.value, '\r', ''))) = LOWER(TRIM(REPLACE(?, '\r', '')))`;
+      where = `AND notations.value = ?`;
       params.push(selectorValue);
     } else if (selector === "grip") {
       where = ` AND grips.strings = ? `;
@@ -86,7 +86,7 @@ export const ChordModel = {
       return { id: cRes.insertId, notation_id, tuning_id, grip_id };
     } catch (err) {
       await conn.rollback();
-/*
+      /*
       if (err && err.code === "ER_DUP_ENTRY") {
         // Translate into a proper HTTP 409
         err.status = 409;

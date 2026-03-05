@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import bcrypt from "bcrypt";
@@ -9,12 +9,23 @@ const __dirname = path.dirname(__filename);
 const prisma = new PrismaClient();
 
 async function main() {
-  // Get user credentials from JSON file 
+  // Get user credentials from JSON file
   const filePath = path.join(__dirname, "../data", "users.json");
-  const raw = await fs.readFileSync(filePath, "utf8");
+  const raw = await fs.readFile(filePath, "utf8");
   const users = JSON.parse(raw);
 
   for (const u of users) {
+    // Check existence by email OR username (adjust if your schema uses different unique fields)
+    const exists = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email_address: u.email_address },
+          { user_name: u.user_name },
+        ],
+      },
+      select: { id: true },
+    });
+
     const password_hash = await bcrypt.hash(String(u.password), 10);
 
     const data = {
@@ -36,14 +47,17 @@ async function main() {
       last_login_at: new Date(),
     };
 
-    // Idempotent behaviour: create or update record by unique email
     await prisma.user.upsert({
       where: { email_address: data.email_address },
       update: data,
       create: data,
     });
 
-    console.log(`Seeded: ${data.email_address}`);
+    if (exists) {
+      console.log(`User already exists: ${u.user_name}`);
+    } else {
+      console.log(`Seeded: ${data.email_address}`);
+    }
   }
 
   console.log("Done seeding users.");

@@ -14,7 +14,7 @@ router.get('/:selector/:selectorValue/tuning/:tuningValue', ChordController.getB
 
 // Protected routes
 router.post('/', authenticate, requireActiveToken, validateBody(createChordSchema), ChordController.create);
-router.put('/:id', authenticate, requireActiveToken, requireAdmin, ChordController.update);
+//router.put('/:id', authenticate, requireActiveToken, requireAdmin, ChordController.update);
 router.patch('/:id', authenticate, requireActiveToken, ChordController.patch);
 router.delete('/:id', authenticate, requireActiveToken, ChordController.remove);
 
