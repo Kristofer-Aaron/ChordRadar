@@ -38,23 +38,37 @@ export async function requireActiveToken(req, res, next) {
   }
 }
 
-//Check if the user with the given credentials has a verified email address
 export async function requireEmailVerified(req, res, next) {
-  const { email_address } = req.body;
-  const { email_verified } = await UserModel.findByEmail(email_address);
-  if (email_verified == '0') {
-    return res.status(403).json({ error: "Email not verified" });
+  try {
+    const email = req?.body?.email_address;
+
+    if (!email || typeof email !== 'string' || email.trim() === '') {
+      return res.status(400).json({ error: 'email_address is required' });
+    }
+    const user = await UserModel.findByEmail(email.trim());
+    if (!user) {
+      return res.status(404).json({ error: 'User with this email was not found' });
+    }
+    if (!user.email_verified) {
+      return res.status(403).json({ error: 'Email not verified' });
+    }
+
+    req.user = user;
+    return next();
+  } catch (err) {
+    return next(err);
   }
-  next();
 }
 
 //Check if the account of the user with the given credentials hasn't been restricted
 export async function requireStatusActive(req, res, next) {
   const { email_address } = req.body;
   const { status } = await UserModel.findByEmail(email_address);
+
   if (status != 'active') {
     return res.status(403).json({ error: "Unable to log in, account status was restricted to " + status });
   }
+
   next();
 }
 
@@ -62,5 +76,6 @@ export async function requireAdmin(req, res, next) {
     if (req.user.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
     }
+    
     next();
 }
