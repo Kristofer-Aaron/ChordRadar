@@ -57,54 +57,68 @@ export const AuthController = {
   },
 
   async loginTotp(req, res) {
-    try {
-      const { email_address, totp_token } = req.body || {};
+  try {
+    const { email_address, totp_token } = req.body || {};
 
-      const email = String(email_address).trim().toLowerCase();
-      const code = String(totp_token).trim();
+    // Match login() behavior: parse remember-me from query string
+    const rememberMe = req.query?.['remember-me'] == "true" ? true : false;
+    console.log("Remember param:", rememberMe);
 
-      // Load user (do not reveal if not found)
-      const user = await UserModel.findByEmail(email);
-      if (!user) { return res.status(401).json({ error: 'Invalid credentials' }); }
-
-      // Ensure TOTP is enabled for this account
-      if (!user.two_factor_enabled) { return res.status(401).json({ error: 'TOTP login is disabled' }); }
-
-      // Verify TOTP against stored Base32 secret
-      const isValid = verifyTotp({ token: code, secret: user.two_factor_secret });
-      if (!isValid) { return res.status(401).json({ error: 'Invalid credentials' }); }
-
-      // JWT configuration guard
-      const jwtSecret = process.env.JWT_SECRET;
-      if (!jwtSecret) { return res.status(500).json({ error: 'Server config error' }); }
-
-      // Check for existing active api_access token (to report renewal)
-      const existing = await TokenModel.findUserToken(user.id, 'api_access');
-
-      // 6) Issue a fresh JWT (used for both first-time and renewal)
-      const jwtPayload = { id: user.id, role: user.role };
-      const accessToken = jwt.sign(jwtPayload, jwtSecret, {
-        algorithm: 'HS256',
-        expiresIn: '1h',
-      });
-
-      // Persist new api_access token; enforce one-live-token-per-type
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
-      await TokenModel.deleteUserToken(user.id, 'api_access');
-      await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
-
-      // Success (include whether this was a renewal)
-      return res.status(200).json({
-        ok: true,
-        token: accessToken,
-        renewed: Boolean(existing),
-      });
-    } catch (err) {
-      console.error('[loginWithTotp] error:', err);
-      return res.status(500).json({ error: 'Internal Server Error' });
+    // Basic input guard (consistent with login())
+    if (!email_address || !totp_token) {
+      return res.status(400).json({ error: 'Missing credentials' });
     }
-  },
+
+    const email = String(email_address).trim().toLowerCase();
+    const code = String(totp_token).trim();
+
+    // Load user (do not reveal if not found)
+    const user = await UserModel.findByEmail(email);
+    if (!user) { return res.status(401).json({ error: 'Invalid credentials' }); }
+
+    // Ensure TOTP is enabled for this account
+    if (!user.two_factor_enabled) {
+      return res.status(401).json({ error: 'TOTP login is disabled' });
+    }
+
+    // Verify TOTP against stored Base32 secret
+    const isValid = verifyTotp({ token: code, secret: user.two_factor_secret });
+    if (!isValid) { return res.status(401).json({ error: 'Invalid credentials' }); }
+
+    // JWT configuration guard
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) { return res.status(500).json({ error: 'Server config error' }); }
+
+    // Check for existing active api_access token (to report renewal)
+    const existing = await TokenModel.findUserToken(user.id, 'api_access');
+
+    // Issue a fresh JWT (duration mirrors login())
+    const jwtPayload = { id: user.id, role: user.role };
+    const accessToken = jwt.sign(jwtPayload, jwtSecret, {
+      algorithm: 'HS256',
+      expiresIn: rememberMe ? '30d' : '1h',
+    });
+
+    // Persist new api_access token; enforce one-live-token-per-type
+    const now = new Date();
+    const expiresAt = rememberMe
+      ? new Date(now.getTime() + process.env.API_TOKEN_EXPIRATION_LONG * 1000)
+      : new Date(now.getTime() + process.env.API_TOKEN_EXPIRATION * 1000);
+
+    await TokenModel.deleteUserToken(user.id, 'api_access');
+    await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
+
+    // Success (include whether this was a renewal)
+    return res.status(200).json({
+      ok: true,
+      token: accessToken,
+      renewed: Boolean(existing),
+    });
+  } catch (err) {
+    console.error('[loginWithTotp] error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+},
 
   async logout(req, res) {
     try {
