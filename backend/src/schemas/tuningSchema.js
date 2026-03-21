@@ -1,5 +1,5 @@
 import Joi from "joi";
 
-export const tuningSchema = Joi.object({
-	value: Joi.string().required(),
+export const TuningSchema = Joi.object({
+	value: Joi.string().max(8).required(),
 });

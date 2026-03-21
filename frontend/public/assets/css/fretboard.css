@@ -60,19 +60,7 @@
   text-align: center;
   margin: 0;
   padding: 0;
-
-  /* border-right-width: 4px;
-  border-right-style: solid;
-  border-image: linear-gradient(to right, gray 98%, white 99%, gray 100%) 1; */
-
 }
-
-
-
-/* Last table cell no border 
-#guitarNeck div:last-child {
-  border-right: none;
-}*/
 
 /* Hide native radio button */
 .fretboardRadio {
@@ -110,9 +98,6 @@
   user-select: none;
   opacity: 0;
 }
-
-
-
 
 .fretboardRadio + label:hover div {
   opacity: 1;

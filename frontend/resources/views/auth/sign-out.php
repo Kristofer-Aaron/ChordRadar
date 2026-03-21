@@ -43,7 +43,7 @@ async function performLogout() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
+                    'Authorization': `${authToken}`
                 },
                 credentials: 'include',
                 mode: 'cors'

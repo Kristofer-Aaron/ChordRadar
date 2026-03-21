@@ -29,16 +29,43 @@ class NoteUtilities {
         'B': 11
     };
 
+    static getMidiNote(noteName, octave = 0) {
+        if (this.sharpNoteMap[noteName] !== undefined) {
+            return this.sharpNoteMap[noteName] + (octave + 1) * 12;
+        } else if (this.flatNoteMap[noteName] !== undefined) {
+            return this.flatNoteMap[noteName] + (octave + 1) * 12;
+        }
+        console.error(`Invalid note name: ${noteName}`);
+        return null;
+    }
+
     static tuning = [
-        this.getMidiNote('E', 2),
-        this.getMidiNote('A', 2),
-        this.getMidiNote('D', 3),
-        this.getMidiNote('G', 3),
-        this.getMidiNote('B', 3),
-        this.getMidiNote('E', 4)
+        NoteUtilities.getMidiNote('E', 2),
+        NoteUtilities.getMidiNote('A', 2),
+        NoteUtilities.getMidiNote('D', 3),
+        NoteUtilities.getMidiNote('G', 3),
+        NoteUtilities.getMidiNote('B', 3),
+        NoteUtilities.getMidiNote('E', 4)
     ];
 
     static getNoteName(midiNote, sharp = true) {
+        if (midiNote < 0 || midiNote > 127) {
+            console.error(`Invalid MIDI note number: ${midiNote}`);
+            return null;
+        }
+
+        const noteNumber = midiNote % 12;
+
+        if (sharp) {
+            const noteNames = Object.keys(this.sharpNoteMap);
+            return noteNames[noteNumber];
+        } else {
+            const noteNames = Object.keys(this.flatNoteMap);
+            return noteNames[noteNumber];
+        }
+    }
+
+    static getNoteRender(midiNote, sharp = true) {
         if (midiNote < 0 || midiNote > 127) {
             console.error(`Invalid MIDI note number: ${midiNote}`);
             return null;
@@ -49,10 +76,10 @@ class NoteUtilities {
 
         if (sharp) {
             const noteNames = Object.keys(this.sharpNoteMap);
-            return noteNames[noteNumber] + octave;
+            return noteNames[noteNumber] + '<sup>' + octave + '</sup>';
         } else {
             const noteNames = Object.keys(this.flatNoteMap);
-            return noteNames[noteNumber] + octave;
+            return noteNames[noteNumber] + '<sup>' + octave + '</sup>';
         }
     }
 
@@ -72,15 +99,5 @@ class NoteUtilities {
         }
 
         return 440 * Math.pow(2, (midiNote - 69) / 12);
-    }
-
-    static getMidiNote(noteName, octave = 0) {
-        if (this.SharpNoteMap[noteName] !== undefined) {
-            return this.SharpNoteMap[noteName] + (octave + 1) * 12;
-        } else if (this.FlatNoteMap[noteName] !== undefined) {
-            return this.FlatNoteMap[noteName] + (octave + 1) * 12;
-        }
-        console.error(`Invalid note name: ${noteName}`);
-        return null;
     }
 }

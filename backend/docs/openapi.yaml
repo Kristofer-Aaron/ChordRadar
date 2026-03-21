@@ -202,6 +202,132 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  
+    post:
+      tags: [Auth]
+      operationId: loginTotp
+      summary: Login with email + TOTP to obtain an access token
+      description: |
+        Accepts an email address and a TOTP code and returns a short-lived JWT access token.
+
+        **Preconditions enforced by middleware:**
+        - The user's email must be verified (`requireEmailVerified`).
+        - The user's status must be active (`requireStatusActive`).
+
+        **Business rules:**
+        - TOTP must be enabled for the user; otherwise, login is rejected.
+        - If an `api_access` token already exists for the user (single-session policy), login is rejected.
+
+        **Token details:**
+        - Algorithm: `HS256`
+        - Expires in: `1h` (persisted with the same expiry in the token table)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginTotpRequest'
+            examples:
+              basic:
+                summary: Valid login payload
+                value:
+                  email_address: "user@example.com"
+                  totp_token: "123456"
+              eightDigits:
+                summary: 8-digit TOTP code example (if enabled in your TOTP policy)
+                value:
+                  email_address: "user@example.com"
+                  totp_token: "12345678"
+      responses:
+        '200':
+          description: Successful TOTP login; returns a JWT access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginTotpSuccess'
+              examples:
+                success:
+                  value:
+                    ok: true
+                    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6InVzZXIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDAzNjAwMH0.abc123DEFghiJKLmnOPqrsTUVwxyz-EXAMPLE"
+        '400':
+          description: Bad Request — validation failed or already logged in (single-session policy).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Missing or invalid fields
+                  value:
+                    error: "Invalid request body"
+                alreadyLoggedIn:
+                  summary: Single-session policy enforced
+                  value:
+                    error: "Already logged in"
+        '401':
+          description: Unauthorized — invalid credentials or TOTP not enabled for this user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidCredentials:
+                  value:
+                    error: "Invalid credentials"
+                totpDisabled:
+                  value:
+                    error: "TOTP login is disabled"
+        '403':
+          description: Forbidden — email not verified or account not active (middleware).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emailNotVerified:
+                  value:
+                    error: "Email not verified"
+                accountNotActive:
+                  value:
+                    error: "Account is not active"
+        '500':
+          description: Internal Server Error — server config error or unexpected failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverConfigError:
+                  value:
+                    error: "Server config error"
+                generic:
+                  value:
+                    error: "Internal Server Error"
+      x-codeSamples:
+        - lang: cURL
+          label: cURL
+          source: |
+            curl -X POST "http://localhost:3000/login/totp" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "email_address": "user@example.com",
+                "totp_token": "123456"
+              }'
+        - lang: JavaScript
+          label: fetch
+          source: |
+            fetch("http://localhost:3000/login/totp", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email_address: "user@example.com",
+                totp_token: "123456"
+              })
+            })
+            .then(r => r.json())
+            .then(console.log);
+
   /users:
     get:
       tags: [Users]

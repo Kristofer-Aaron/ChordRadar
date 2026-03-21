@@ -1,7 +1,7 @@
 import mysqldump from 'mysqldump';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import dotenv from "dotenv";
-dotenv.config();
 
 dotenv.config();
 
@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 (async () => {
-    try {
+    try { 
         const BACKUP_PATH = path.join(__dirname, '../../.db_backups', `backup_${Date.now()}.sql`);
 
         await mysqldump({

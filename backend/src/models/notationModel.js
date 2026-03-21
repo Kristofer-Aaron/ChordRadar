@@ -15,10 +15,8 @@ export const NotationModel = {
 
   async create(data) {
     const { value } = data;
-    const [result] = await pool.query(
-      "INSERT INTO notations (value) VALUES (?)",
-      [value]
-    );
+    const [result] = await pool.query("INSERT INTO notations (value) VALUES (?)",
+    [value]);
     return { id: result.insertId, ...data };
   },
 

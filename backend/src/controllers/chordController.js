@@ -1,164 +1,94 @@
 import pool from "../config/db.js";
 import { ChordModel } from "../models/chordModel.js";
+import UserModel from "../models/userModel.js";
 import { chordSchema } from "../schemas/chordSchema.js";
 
 export const ChordController = {
 	async getAll(req, res) {
 		try {
+			// Parse optional fields to display value instead of id (notation, grip, tuning)
 			let fields = {};
-			try {
-				fields = req.query.fields ? JSON.parse(req.query.fields) : {};
-			} catch {
-				fields = {};
-			}
-
-			const notationField =
-				fields.notation === "value"
-					? "notations.value AS notation"
-					: "chords.notation_id AS notation_id";
-
-			const tuningField =
-				fields.tuning === "value"
-					? "tunings.value AS tuning"
-					: "tunings.id AS tuning_id";
-
-			const gripField =
-				fields.grip === "value"
-					? "grips.strings AS grip"
-					: "grips.id AS grip_id";
-
-			const query = `
-        SELECT chords.id, ${notationField}, ${tuningField}, ${gripField}
-        FROM chords
-        JOIN notations ON chords.notation_id = notations.id
-        JOIN tunings ON chords.tuning_id = tunings.id
-        JOIN grips ON chords.grip_id = grips.id
-      `;
-
-			const [rows] = await pool.query(query);
-			res.json(rows);
-		} catch (err) {
-			res.status(500).json({ error: err.message });
-		}
+			try { fields = req.query.fields ? JSON.parse(req.query.fields) : {}; }
+			catch { fields = {}; }
+	  
+			const rows = await ChordModel.findAll({ fields });
+			return res.json(rows);
+		  } catch (err) { return res.status(500).json({ error: err.message }); }
 	},
-
+	
 	async getById(req, res) {
 		try {
 			const { id } = req.params;
 
-			if (!id || isNaN(id)) {
-				return res.status(400).json({ message: "Invalid ID format" });
-			}
+			// Validate id
+			if (!id || isNaN(id)) { return res.status(400).json({ message: "Invalid ID format" }); }
 
+			// Parse optional fields to display value instead of id (notation, grip, tuning)
 			let fields = {};
-			try {
-				fields = req.query.fields ? JSON.parse(req.query.fields) : {};
-			} catch {
-				fields = {};
-			}
+			try { fields = req.query.fields ? JSON.parse(req.query.fields) : {}; }
+			catch { fields = {}; }
 
-			const notationField =
-				fields.notation === "value"
-					? "notations.value AS notation"
-					: "chords.notation_id AS notation_id";
-
-			const tuningField =
-				fields.tuning === "value"
-					? "tunings.value AS tuning"
-					: "tunings.id AS tuning_id";
-
-			const gripField =
-				fields.grip === "value"
-					? "grips.strings AS grip"
-					: "grips.id AS grip_id";
-
-			const query = `
-        SELECT chords.id, ${notationField}, ${tuningField}, ${gripField}
-        FROM chords
-        JOIN notations ON chords.notation_id = notations.id
-        JOIN tunings ON chords.tuning_id = tunings.id
-        JOIN grips ON chords.grip_id = grips.id
-        WHERE chords.id = ?
-      `;
-
-			const [rows] = await pool.query(query, [id]);
-
-			if (rows.length === 0) {
-				return res.status(404).json({ message: "Chord not found" });
-			}
-
-			res.json(rows[0]);
+			const row = await ChordModel.findById({ id: Number(id), fields });
+			if (!row) { return res.status(404).json({ message: "Chord not found" }); }
+			return res.json(row);
 		} catch (err) {
 			console.error("Error fetching chord by ID:", err);
-			res.status(500).json({ error: err.message });
+			return res.status(500).json({ error: err.message });
+		}
+	},
+
+	async getBySelector(req, res) {
+	try {
+		const { selector, selectorValue, tuningValue } = req.params;
+
+		// Basic validation
+		if (!["notation", "grip"].includes(selector)) {
+			return res.status(400).json({ message: "Selector must be either 'notation' or 'grip'." });
+		}
+		if (!selectorValue || !tuningValue) {
+			return res.status(400).json({ message: "Both selectorValue and tuningValue are required." });
+		}
+
+		const rows = await ChordModel.findBySelector({ selector, selectorValue, tuningValue });
+
+		// 200 with an array (can be empty)
+		return res.json(rows);
+		} catch (err) {
+			const status = err.status || 500;
+			console.error("Error fetching chords:", err);
+			return res.status(status).json({ error: err.message });
 		}
 	},
 
 	async create(req, res) {
-		const { notation, tuning, grip } = req.body;
-
+		const { notation, tuning, grip } = req.body ?? {};
+		const user = await UserModel.findByAccessToken(req.headers.authorization.split(' ')[1]);
 		try {
-			// Find or create notation
-			let [[notationRow]] = await pool.query(
-				"SELECT id FROM notations WHERE value = ?",
-				[notation]
-			);
-			if (!notationRow) {
-				const [notationResult] = await pool.query(
-					"INSERT INTO notations (value) VALUES (?)",
-					[notation]
-				);
-				notationRow = { id: notationResult.insertId };
+			const result = await ChordModel.create({ notation: notation.trim(), tuning: tuning.trim(), grip: grip.trim() });
+			if(user.role == "user") {
+				await ChordModel.insertUserChordRelation(user.user_id, result.id);
 			}
-
-			// Find or create tuning
-			let [[tuningRow]] = await pool.query(
-				"SELECT id FROM tunings WHERE value = ?",
-				[tuning]
-			);
-			if (!tuningRow) {
-				const [tuningResult] = await pool.query(
-					"INSERT INTO tunings (value) VALUES (?)",
-					[tuning]
-				);
-				tuningRow = { id: tuningResult.insertId };
-			}
-
-			// Find or create grip
-			let [[gripRow]] = await pool.query(
-				"SELECT id FROM grips WHERE strings = ?",
-				[grip]
-			);
-			if (!gripRow) {
-				const [gripResult] = await pool.query(
-					"INSERT INTO grips (strings) VALUES (?)",
-					[grip]
-				);
-				gripRow = { id: gripResult.insertId };
-			}
-
-			// Insert chord
-			const [chordResult] = await pool.query(
-				"INSERT INTO chords (notation_id, tuning_id, grip_id) VALUES (?, ?, ?)",
-				[notationRow.id, tuningRow.id, gripRow.id]
-			);
-
-			res.status(201).json({
-				id: chordResult.insertId,
-				notation_id: notationRow.id,
-				tuning_id: tuningRow.id,
-				grip_id: gripRow.id,
-			});
+			return res.status(201).json(result);
 		} catch (err) {
-			res.status(500).json({ error: err.message });
+			if(err && err.code === 'ER_DUP_ENTRY') {
+				if(user.role == "user") {
+					const dup_entry = await ChordModel.findBySelector({ selector: "notation", selectorValue: notation, tuningValue: tuning });
+					console.log("Duplicate chord:", dup_entry[0].id);
+					await ChordModel.insertUserChordRelation(user.user_id, dup_entry[0].id);
+				}
+				return res.status(409).json({ error: 'Chord with this notation, tuning and grip already exists'});
+			}
+			const status = err.status || 500;
+			return res.status(status).json({ error: err.message });
 		}
 	},
 
+	//
 	async update(req, res) {
 		const { error, value } = chordSchema.validate(req.body);
 		if (error)
 			return res.status(400).json({ error: error.details[0].message });
-
+		const user = await UserModel.findByAccessToken(req.headers.authorization.split(' ')[1]);
 		try {
 			const updated = await ChordModel.update(req.params.id, value);
 			res.json(updated);

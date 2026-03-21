@@ -1,11 +1,3 @@
-/*
- * Requirements for the usage of this seeder:
- * - Seeder is added to the "scripts" section of package.json as: "seed-chords": "node prisma/seeders/chordSeeder.js"
- *   (terminal command: npm run seed-chords)
- * - Required files are present in prisma/data folder (e.g.: chords.txt)
- * - Running database with identical data structure
- */
-
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
@@ -13,16 +5,11 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const prisma = new PrismaClient();
 
 async function main() {
 	const filePath = path.join(__dirname, "../data", "chords.txt");
-	const lines = fs
-		.readFileSync(filePath, "utf-8")
-		.split("\n")
-		.filter(Boolean)
-		.slice(1);
+	const lines = fs.readFileSync(filePath, "utf-8").split("\r\n").filter(Boolean).slice(1);
 
 	for (const line of lines) {
 		const [gripStr, tuningStr, chordName] = line.split("/");

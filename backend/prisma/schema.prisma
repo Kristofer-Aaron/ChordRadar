@@ -1,5 +1,8 @@
+// DATABASE_URL: mysql://chordRadar:admin@localhost:3306/chord_radar
+// $ npx prisma migrate dev --name chord_radar
+
 generator client {
-  provider      = "prisma-client-js"
+  provider = "prisma-client-js"
   binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
 }
 
@@ -9,91 +12,71 @@ datasource db {
 }
 
 model Chord {
-  id          Int                 @id @default(autoincrement())
-  tuning_id   Int
-  grip_id     Int
-  notation_id Int
-  grip        Grip                @relation(fields: [grip_id], references: [id], onUpdate: Restrict)
-  notation    Notation            @relation(fields: [notation_id], references: [id], onUpdate: Restrict)
-  tuning      Tuning              @relation(fields: [tuning_id], references: [id], onUpdate: Restrict)
-  users       UserChordRelation[]
+  id            Int         @id @default(autoincrement())
+  notation_id   Int
+  notation      Notation    @relation(fields: [notation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tuning_id     Int
+  tuning        Tuning      @relation(fields: [tuning_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  grip_id       Int
+  grip          Grip        @relation(fields: [grip_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  @@index([grip_id], map: "chords_grip_id_fkey")
-  @@index([notation_id], map: "chords_notation_id_fkey")
-  @@index([tuning_id], map: "chords_tuning_id_fkey")
+  //Relation to user_chord_relations
+  users         UserChordRelation[]
+
+  @@unique([notation_id, tuning_id, grip_id], map: "chords_notation_tuning_grip_uk")
+
   @@map("chords")
 }
 
 model Notation {
-  id     Int     @id @default(autoincrement())
-  value  String  @unique @db.VarChar(16)
-  chords Chord[]
+  id      Int     @id       @default(autoincrement())
+  value   String  @unique   @db.VarChar(16)
+  chords  Chord[]
 
   @@map("notations")
 }
 
 model Tuning {
-  id     Int     @id @default(autoincrement())
-  value  String  @unique @db.VarChar(8)
-  chords Chord[]
+  id          Int     @id @default(autoincrement())
+  value       String  @unique   @db.VarChar(8)
+  chords      Chord[]
 
   @@map("tunings")
 }
 
 model Grip {
-  id      Int     @id @default(autoincrement())
-  strings String  @unique @db.VarChar(8)
-  chords  Chord[]
+  id          Int       @id @default(autoincrement())
+  strings     String    @unique   @db.VarChar(8)
+  chords      Chord[]
 
   @@map("grips")
 }
 
 model User {
-  id                  Int                 @id @default(autoincrement())
-  user_name           String              @db.VarChar(16)
-  first_name          String              @db.VarChar(16)
-  last_name           String              @db.VarChar(32)
-  email_address       String              @unique @db.VarChar(255)
-  email_verified      Boolean             @default(false)
-  password_hash       String              @db.VarChar(255)
+  id                  Int      @id @default(autoincrement())
+  user_name           String   @db.VarChar(16)
+  first_name          String   @db.VarChar(16)
+  last_name           String   @db.VarChar(32)
+  email_address       String   @unique   @db.VarChar(255)
+  email_verified      Boolean  @default(false)
+  password_hash       String   @db.VarChar(255)
   password_changed_at DateTime
-  two_factor_enabled  Boolean             @default(false)
+  two_factor_enabled  Boolean  @default(false)
   two_factor_method   TwoFactorMethod?
-  two_factor_secret   String?             @db.VarChar(255)
-  two_factor_backup   String?             @db.LongText
-  role                Role                @default(user)
-  status              Status              @default(pending)
-  account_created_at  DateTime            @default(now())
-  last_login_at       DateTime            @updatedAt
-  preferences         String              @db.LongText
-  chords              UserChordRelation[]
+  two_factor_secret   String?  @db.VarChar(255)
+  two_factor_backup   Json?
+  role                Role     @default(user)
+  status              Status   @default(pending)
+  account_created_at  DateTime @default(now())
+  last_login_at       DateTime @updatedAt
+  preferences         Json
+  
+  //Relation to user_tokens
   tokens              UserToken[]
+  //Relation to user_chord_relations
+  chords              UserChordRelation[]
 
   @@map("users")
-}
-
-model UserToken {
-  id         Int       @id @default(autoincrement())
-  user_id    Int
-  token      String    @db.VarChar(255)
-  type       TokenType
-  created_at DateTime  @default(now())
-  expires_at DateTime
-  user       User      @relation(fields: [user_id], references: [id], onUpdate: Restrict)
-
-  @@index([user_id], map: "user_tokens_user_id_fkey")
-  @@map("user_tokens")
-}
-
-model UserChordRelation {
-  user_id  Int
-  chord_id Int
-  chord    Chord @relation(fields: [chord_id], references: [id], onUpdate: Restrict)
-  user     User  @relation(fields: [user_id], references: [id], onUpdate: Restrict)
-
-  @@id([user_id, chord_id])
-  @@index([chord_id], map: "user_chord_relations_chord_id_fkey")
-  @@map("user_chord_relations")
 }
 
 enum TwoFactorMethod {
@@ -112,8 +95,32 @@ enum Status {
   suspended
 }
 
+model UserToken {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  token       String    @db.VarChar(255)
+  type        TokenType
+  created_at  DateTime  @default(now())
+  expires_at  DateTime
+
+  @@map("user_tokens")
+}
+
 enum TokenType {
   email_verification
   password_reset
   api_access
+}
+
+model UserChordRelation {
+  user_id   Int
+  user      User  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  chord_id  Int
+  chord     Chord @relation(fields: [chord_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([user_id, chord_id])
+
+  @@id([user_id, chord_id])
+  @@map("user_chord_relations")
 }

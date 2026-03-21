@@ -1,9 +1,4 @@
 
-const Tuning = ['E', 'A', 'D', 'G', 'B', 'E'];
-
-const NotesFlat = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-const NotesSharp = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-
 function generateFretboard(stringCount = 6, fretCount = 22) {
     const fretboardContainer = document.getElementById('fretboardContainer');
     
@@ -14,38 +9,31 @@ function generateFretboard(stringCount = 6, fretCount = 22) {
     const semitoneRatio = Math.pow(2, 1 / 12); // ≈ 1.059463094
     const k = semitoneRatio - 1;
     
+    const tuning = NoteUtilities.tuning;
+
     for (let i = 0; i <= fretCount; i++) { // Repeat for every fret
         // Insert a column for every fret
-        if (i === 0) {
-            html += `
-            <div class="nut"></div>
-            <div class="fretboardColumn" data-fret="${i}">`;
-        } else {
-            html += `
-            <div class="fret"></div>
-            <div class="fretboardColumn" data-fret="${i}">`;
-        }
 
+        html += `<div class="fretboardColumn" data-fret="${i}">`
+        
         for (let j = stringCount - 1; j >= 0; j--) { // Repeat for every string
+            midiNote = tuning[j] + i;
 
-            // Variables for fret spacing calculation
-            stringTuning = Tuning[j];
+            noteName = NoteUtilities.getNoteName(midiNote);
+            noteRender = NoteUtilities.getNoteRender(midiNote);
 
-            ind = NotesFlat.findIndex(note => note == stringTuning);
-            note = NotesFlat[(ind + i)%NotesFlat.length];
-            fretSpacing = 1000 * (1 / Math.pow(2, i / 24)) * k
-
+            fretSpacing = 1400 * (1 / Math.pow(2, i / 24)) * k
 
             // use fretSpacing for realism
             html += `
-            <div class="fretboardCell" style="width:${fretSpacing}px"> 
-                <input type="radio" name="s${j}" value="${i}" id="s${j}f${i}" class="fretboardRadio">
+            <div class="fretboardCell" style="width:${i === 0 ? "40" : fretSpacing}px"> 
+                <input type="radio" name="s${j}" value="${i}" id="s${j}f${i}" class="fretboardRadio" data-midi="${midiNote}" data-note="${noteName}">
                 <label for="s${j}f${i}">
-                    <div>${note}</div>
+                    <div>${noteRender}</div>
                 </label>
             </div>`;
         }
-        html += `</div>`;
+        html += `</div><div class="${i === 0 ? "nut" : "fret"}"></div>`;
     }
     html += `</div>`;
 
@@ -62,23 +50,13 @@ document.addEventListener('wheel', e => {
     if (container.contains(e.target)) {
         e.preventDefault();
         if (e.deltaY !== 0) {
-            container.scrollLeft += e.deltaY;
+            container.scrollLeft += e.deltaY + e.deltaX;
         }
     }
 }, { passive: false });
 
-document.getElementById('resetButton').addEventListener('click', () => {
-    const radios = document.querySelectorAll('input.fretboardRadio');
+if (document.getElementById('playSoundButton')) {
 
-    radios.forEach(radio => {
-        radio.checked = false;
-        radio.wasChecked = false;
-    });
-
-    logValues(getRadioValues());
-    const container = document.getElementById("possibleChords");
-    container.innerHTML = "";
-
-}, { passive: true });
+}
 
 generateFretboard(6, 24);

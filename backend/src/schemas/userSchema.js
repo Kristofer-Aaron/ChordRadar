@@ -11,7 +11,7 @@ export const userSchema = Joi.object({
 	password_changed_at: Joi.date().optional(),
 	two_factor_enabled: Joi.boolean().default(false),
 	two_factor_method: Joi.string()
-		.valid("email", "google_authenticator", "microsoft_authenticator")
+		.valid("email", "totp")
 		.optional(),
 	two_factor_secret: Joi.string().max(255).optional(),
 	two_factor_backup: Joi.array().items(Joi.string()).optional(),

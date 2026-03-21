@@ -17,29 +17,27 @@ import userRoutes from './routes/userRoutes.js';
 const app = express();
 const openapiSpec = YAML.load("./docs/openapi.yaml");
 
-// CORS must come BEFORE routes
+
 const allowedOrigins = [
+    'http://127.0.01',
     'http://localhost',
     'http://localhost:80',
-    'http://127.0.0.1',
-];
+  ];  
 
 app.use(cors({
-    origin: function(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(null, true); // Allow all for now
-        }
+    origin(origin, cb) {
+      // allow non-browser tools without Origin (curl/Postman)
+      if (!origin) return cb(null, true);
+      return allowedOrigins.includes(origin)
+        ? cb(null, true)
+        : cb(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false,
+    credentials: true,      // only if you actually need cookies/auth
     maxAge: 86400,
-}));
-
-// app.options('*', cors());
-
+  }));
+  
 app.use(express.json());
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
@@ -50,7 +48,5 @@ app.use('/api/tunings', tuningRoutes);
 app.use('/api/grips', gripRoutes);
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
-
-
 
 export default app;

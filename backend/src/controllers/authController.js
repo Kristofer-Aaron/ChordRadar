@@ -4,137 +4,115 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import UserModel from "../models/userModel.js";
 import sendEmail from "../utils/sendEmail.js";
-import { TokenModel } from "../models/tokenModels.js";
+import { TokenModel } from "../models/tokenModel.js";
 import { generateQrDataUrl } from "../utils/qrcode.js";
 import QRCode from 'qrcode';
 import { generateTotpSecret, buildOtpAuthUrl, verifyTotp, generateBackupCodes } from "../utils/totp.js";
 
 export const AuthController = {
+  async login(req, res) {
+    try {
+      const { email_address, password } = req.body || {};
+      const rememberMe = req.query?.['remember-me'] == "true" ? true : false;
+      console.log("Remember param:", rememberMe);
+      if (!email_address || !password) { return res.status(400).json({ error: 'Missing credentials' }); }
 
-/**
- * POST /auth/login/password
- * Body: { email_address: string, password: string }
- *
- * Returns: { ok: true, token: string } on success.
- * Errors use generic "Invalid credentials" to avoid leaking whether the email exists or not.
- */
-async login(req, res) {
-  try {
-    const { email_address, password } = req.body || {};
+      // Load user by email (generic error if not found)
+      const user = await UserModel.findByEmail(email_address);
+      if (!user) { return res.status(401).json({ error: 'Invalid credentials' }); }
 
-    // 2) Load user by email (generic error if not found)
-    const user = await UserModel.findByEmail(email_address);
-    if (!user) {
-      // Avoid user enumeration
-      return res.status(401).json({ error: 'Invalid credentials' });
+      // Validate password (avoid leaking existence of user)
+      const passwordOk = await bcrypt.compare(password, user.password_hash);
+      if (!passwordOk) { return res.status(401).json({ error: 'Invalid credentials' }); }
+
+      // JWT configuration guard
+      const secret = process.env.JWT_SECRET;
+      if (!secret) { return res.status(500).json({ error: 'Server config error' }); }
+
+      // Check for existing active api_access token
+      const existing = await TokenModel.findUserToken(user.id, 'api_access');
+
+      // Issue a fresh JWT for both new logins and renewals
+      const jwtPayload = { id: user.id, role: user.role };
+      const accessToken = jwt.sign(jwtPayload, secret, {
+        algorithm: 'HS256',
+        expiresIn: rememberMe ? '30d' : '1h',
+      });
+
+      const now = new Date();
+      const expiresAt = rememberMe ? new Date(now.getTime() + process.env.API_TOKEN_EXPIRATION_LONG * 1000) : new Date(now.getTime() + process.env.API_TOKEN_EXPIRATION * 1000);
+
+      await TokenModel.deleteUserToken(user.id, 'api_access');
+      await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
+
+      return res.status(200).json({
+        ok: true,
+        token: accessToken,
+        renewed: Boolean(existing),
+      });
+    } catch (err) {
+      console.error('[loginWithPassword] error:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
     }
+  },
 
-    // Optional: block re-login if you enforce single active session
-    // If you allow multiple sessions, you can remove this block.
-    const existing = await TokenModel.findUserToken(user.id, 'api_access');
-    if (existing) {
-      return res.status(400).json({ error: 'Already logged in' });
+  async loginTotp(req, res) {
+    try {
+      const { email_address, totp_token } = req.body || {};
+
+      const email = String(email_address).trim().toLowerCase();
+      const code = String(totp_token).trim();
+
+      // Load user (do not reveal if not found)
+      const user = await UserModel.findByEmail(email);
+      if (!user) { return res.status(401).json({ error: 'Invalid credentials' }); }
+
+      // Ensure TOTP is enabled for this account
+      if (!user.two_factor_enabled) { return res.status(401).json({ error: 'TOTP login is disabled' }); }
+
+      // Verify TOTP against stored Base32 secret
+      const isValid = verifyTotp({ token: code, secret: user.two_factor_secret });
+      if (!isValid) { return res.status(401).json({ error: 'Invalid credentials' }); }
+
+      // JWT configuration guard
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) { return res.status(500).json({ error: 'Server config error' }); }
+
+      // Check for existing active api_access token (to report renewal)
+      const existing = await TokenModel.findUserToken(user.id, 'api_access');
+
+      // 6) Issue a fresh JWT (used for both first-time and renewal)
+      const jwtPayload = { id: user.id, role: user.role };
+      const accessToken = jwt.sign(jwtPayload, jwtSecret, {
+        algorithm: 'HS256',
+        expiresIn: '1h',
+      });
+
+      // Persist new api_access token; enforce one-live-token-per-type
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+      await TokenModel.deleteUserToken(user.id, 'api_access');
+      await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
+
+      // Success (include whether this was a renewal)
+      return res.status(200).json({
+        ok: true,
+        token: accessToken,
+        renewed: Boolean(existing),
+      });
+    } catch (err) {
+      console.error('[loginWithTotp] error:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
     }
-
-    const passwordOk = await bcrypt.compare(password, user.password_hash);
-    if (!passwordOk) {
-      // Avoid leaking whether the email exists or not
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // 4) Issue JWT and persist api_access token
-    const jwtPayload = { id: user.id, role: user.role };
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      // Misconfiguration guard
-      return res.status(500).json({ error: 'Server config error' });
-    }
-
-    const accessToken = jwt.sign(jwtPayload, secret, {
-      algorithm: 'HS256',
-      expiresIn: '1h', // adjust to your policy
-    });
-
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
-    await TokenModel.insertUserToken(
-      user.id,
-      accessToken,
-      'api_access',
-      now,
-      expiresAt
-    );
-
-    // 5) Success
-    return res.status(200).json({ ok: true, token: accessToken });
-  } catch (err) {
-    console.error('[loginWithPassword] error:', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
-  }
-},
-
-async loginTotp(req, res) {
-  try {
-    const { email_address, totp_token } = req.body || {};
-
-    const email = email_address.trim().toLowerCase();
-    const code = totp_token.trim();
-
-    // 2) Load user (do not reveal if not found)
-    const user = await UserModel.findByEmail(email);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    if (user.two_factor_enabled == 0) {
-      return res.status(401).json({ error: 'TOTP login is disabled' });
-    }
-
-    // Optional: disallow multiple concurrent sessions. Remove if you allow multi-sessions.
-    const existing = await TokenModel.findUserToken(user.id, 'api_access');
-    if (existing) {
-      return res.status(400).json({ error: 'Already logged in' });
-    }
-
-    // 3) Verify TOTP against stored Base32 secret
-    const secret = user.two_factor_secret;
-    const isValid = verifyTotp({ token: code, secret });
-    if (!isValid) {
-      // Add rate limiting at the route level to slow brute force (see notes below)
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // 4) Issue JWT + persist api_access token
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      return res.status(500).json({ error: 'Server config error' });
-    }
-
-    const jwtPayload = { id: user.id, role: user.role };
-    const accessToken = jwt.sign(jwtPayload, jwtSecret, {
-      algorithm: 'HS256',
-      expiresIn: '1h', // adjust to your policy
-    });
-
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
-    await TokenModel.insertUserToken(user.id, accessToken, 'api_access', now, expiresAt);
-
-    // 5) Success
-    return res.status(200).json({ ok: true, token: accessToken });
-  } catch (err) {
-    console.error('[loginWithTotp] error:', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
-  }
-},
+  },
 
   async logout(req, res) {
     try {
       const token = req.headers.authorization?.split(" ")[1];
-      const payload = req.user; // set by authenticate
+      const payload = req.user;
 
-      //Check if user has an active session
-     const result = await TokenModel.findTokenString(token, 'api_access');
+      // Check if user has an active session
+      const result = await TokenModel.findTokenString(token, 'api_access');
       if (result == null) {
         return res.status(404).json({
           error: "Session not found or already logged out",
@@ -142,7 +120,7 @@ async loginTotp(req, res) {
         });
       }
 
-      //Delete access token on logout
+      // Delete access token on logout
       await TokenModel.deleteUserToken(payload.id, 'api_access');
       return res.status(200).json({ message: "Logout successful" });
     } catch {
@@ -152,20 +130,13 @@ async loginTotp(req, res) {
 
   async register(req, res) {
     try {
-      const {
-        user_name,
-        first_name,
-        last_name,
-        email_address,
-        password,
-        preferences
-      } = req.body;
+      const { user_name, first_name, last_name, email_address, password, preferences } = req.body;
 
       const passwordHash = await bcrypt.hash(password, 10);
       const now = new Date();
 
       //Insert new record after validating the credentials given by the user
-     const result = await UserModel.create({user_name: user_name, first_name: first_name, last_name: last_name, email_address: email_address, password_hash: passwordHash, password_changed_at: now, account_created_at: now, last_login_at: now, preferences: preferences});
+     const result = await UserModel.create({ user_name: user_name, first_name: first_name, last_name: last_name, email_address: email_address, password_hash: passwordHash, password_changed_at: now, account_created_at: now, last_login_at: now, preferences: preferences });
       const userId = result.id;
 
       // Generate and insert email verification token
@@ -175,7 +146,7 @@ async loginTotp(req, res) {
      await TokenModel.insertUserToken(userId, emailToken, 'email_verification', now, expiresAt);
 
      //Send verification email
-      const verificationLink = `http://chordradar.akos.local/auth/verify?token=${emailToken}`;
+      const verificationLink = `http://localhost:3030/auth/verify?token=${emailToken}`;
       await sendEmail(
         email_address,
         "Verify your email",
@@ -207,30 +178,22 @@ async loginTotp(req, res) {
     const { token } = req.validatedQuery;
     try {
       //Check for existing and valid verification token
-     const rows = await TokenModel.findTokenString(token, 'email_verification');
-      if (rows == null) {
-        return res.status(400).json({ message: "Invalid or expired token" });
-      }
+      const rows = await TokenModel.findTokenString(token, 'email_verification');
+      if (rows == null) { return res.status(400).json({ message: "Invalid or expired token" }); }
       const { user_id, expires_at } = rows; //object DESTRUCTURING
-      if (new Date() > expires_at) {
-        return res.status(400).json({ message: "Token expired" });
-      }
+      if (new Date() > expires_at) { return res.status(400).json({ message: "Token expired" }); }
 
       //Update user data and remove verification token
-      await pool.query(
-        `UPDATE users SET email_verified = 1, status = 'active' WHERE id = ?`,
-        [user_id]
-      );
-     await TokenModel.consumeTokenString(token, 'email_verification');
+      await pool.query(`UPDATE users SET email_verified = 1, status = 'active' WHERE id = ?`,
+        [user_id]);
+      await TokenModel.consumeTokenString(token, 'email_verification');
 
       // Issue API token after successful registration
       const apiTokenExpiration = parseInt(process.env.API_TOKEN_EXPIRATION || "3600", 10);
-      const apiToken = jwt.sign({ id: user_id, role: 'user' }, process.env.JWT_SECRET, {
-        expiresIn: `${apiTokenExpiration}s`,
-      });
+      const apiToken = jwt.sign({ id: user_id, role: 'user' }, process.env.JWT_SECRET, { expiresIn: `${apiTokenExpiration}s` });
       const now = new Date();
       const apiExpiresAt = new Date(now.getTime() + apiTokenExpiration * 1000);
-     await TokenModel.insertUserToken(user_id, apiToken, 'api_access', now, apiExpiresAt)
+      await TokenModel.insertUserToken(user_id, apiToken, 'api_access', now, apiExpiresAt)
 
       return res.json({
         message: "Email verified successfully",
@@ -241,8 +204,8 @@ async loginTotp(req, res) {
     }
   },
 
-// Enroll the currently authenticated user into TOTP 2FA (no admin override)
-async twoFaEnroll(req, res) {
+// Enroll the currently authenticated user into TOTP authentication method
+async totpEnroll(req, res) {
   try {
     const authUser = req.user;
 
@@ -279,7 +242,6 @@ async twoFaEnroll(req, res) {
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 },
-
 
 async getQrPng(req, res) {
     try {
@@ -324,11 +286,9 @@ async getQrPng(req, res) {
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   },
-  
 
-
-// Confirm TOTP 2FA for the currently authenticated user
-async twoFaConfirm(req, res) {
+// Confirm TOTP authentication method for the currently authenticated user
+async totpConfirm(req, res) {
   try {
     const authUser = req.user;
 
@@ -383,8 +343,7 @@ async twoFaConfirm(req, res) {
   }
 },
 
-
-async twoFaDisable(req, res) {
+async totpDisable(req, res) {
   try {
     const authUser = req.user;
     const targetId = String(authUser.id);
@@ -422,7 +381,7 @@ async twoFaDisable(req, res) {
     if (!verified && typeof backupCode === 'string' && backupCode.trim().length > 0) {
       const provided = backupCode.trim();
       const backups = JSON.parse(user.two_factor_backup || '[]');
-      const idx = backups.findIndex(c => timingSafeEqual(c, provided));
+      const idx = backups.findIndex(c => crypto.timingSafeEqual(c, provided));
       if (idx === -1) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
@@ -444,10 +403,10 @@ async twoFaDisable(req, res) {
 
     return res.status(200).json({
       ok: true,
-      message: 'Two-factor authentication disabled.'
+      message: 'TOTP authentication disabled.'
     });
   } catch (err) {
-    console.error('[disableTwoFa] error:', err);
+    console.error('[disableTotp] error:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 },

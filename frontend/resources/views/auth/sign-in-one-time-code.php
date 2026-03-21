@@ -1,15 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title> - ChordRadar</title>
+<?php
+// --- Page-specific settings ---
+$title = "Sign In - ChordRadar";
+$navbarType = "none";
+$scripts = [];
+$stylesheets = [];
 
-    <!-- Bootstrap 5.3.8 link -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Load head content from separate file -->
-    <?php require './partials/head.html' ?>
-</head>
+$error = null;
+$success = null;
 
-
+ob_start();
+?>
 
 <body class="d-flex flex-column min-vh-100 bg-body-secondary">
     <main class="my-4">
@@ -53,8 +53,7 @@
 
                         <hr>
                         <div class="mt-2 text-muted small text-center">
-                            Back to 
-                            <a href="sign-in.php">Simple sign in</a>
+                            Back to <a href="index.php?page=auth/sign-in">Simple sign in</a>
                         </div>
                     </div>
                 </div>
@@ -74,7 +73,7 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const email = localStorage.getItem('pendingEmail');
+            const email = document.getElementById('email').value;
             const code = document.getElementById('code').value;
 
             if (!email) {
@@ -87,7 +86,7 @@
             msgEl.style.display = 'none';
 
             try {
-                const res = await fetch(`${API_BASE_URL}/auth/login/2fa`, {
+                const res = await fetch(`http://localhost:3030/auth/login/totp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email_address: email, totp_token: code })
@@ -119,6 +118,8 @@
         });
     </script>
 
-    <?php require './partials/footer.html' ?>
-</body>
-</html>
+<?php
+$content = ob_get_clean();
+
+// --- Load template ---
+require __DIR__ . '/../../layouts/template.php';

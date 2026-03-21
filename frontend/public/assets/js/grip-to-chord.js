@@ -165,3 +165,5 @@ function RotateForRootnote(notes, index)      //rotate for rootnote
     const rotated = notes.slice(index).concat(notes.slice(0, index));
     return rotated;
 }
+
+

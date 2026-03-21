@@ -12,9 +12,11 @@ $stylesheets = [
 
 // Scripts
 $scripts = [
+    "note-utilities.js",
     "generate-fretboard.js",
     "chord-to-grips.js",
-    "explore.js"
+    "explore.js",
+    "sound-generator.js"
 ];
 
 
@@ -22,7 +24,7 @@ ob_start();
 ?>
 
 <main class="my-4">
-    <div class="border rounded p-4 bg-body-tertiary">
+    <div class="border-top border-bottom py-4 bg-body-tertiary">
         <div class="d-flex gap-2 ml-auto mb-3 justify-content-end">
             <!-- <button class="btn btn-outline-secondary">R</button> -->
             <button class="btn btn-outline-secondary d-none" id="resetButton" aria-label="Reset fretboard">
@@ -32,7 +34,13 @@ ob_start();
                 </svg>
             </button>
         </div>
-        <div class="border rounded my-3 p-3">
+        <div class="border rounded m-3 p-3">
+            <div class="button-group">
+                
+            </div>
+
+
+
 
             <select class="form-select" id="rootNoteSelect" aria-label="Default select example">
                 <option value="" selected>Select Root note</option>
@@ -102,10 +110,19 @@ ob_start();
 
             <button class="btn btn-primary" onclick="ExploreChord()">Explore Chord</button>
         </div>
+        <div class="d-flex gap-2 ml-auto m-3 justify-content-end">
+            <button class="btn btn-outline-secondary" id="playSoundButton" aria-label="Play sound">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-volume-up" viewBox="0 0 16 16">
+                    <path d="M11.536 14.01A8.47 8.47 0 0 0 14.026 8a8.47 8.47 0 0 0-2.49-6.01l-.708.707A7.48 7.48 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303z"/>
+                    <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.48 5.48 0 0 1 11.025 8a5.48 5.48 0 0 1-1.61 3.89z"/>
+                    <path d="M10.025 8a4.5 4.5 0 0 1-1.318 3.182L8 10.475A3.5 3.5 0 0 0 9.025 8c0-.966-.392-1.841-1.025-2.475l.707-.707A4.5 4.5 0 0 1 10.025 8M7 4a.5.5 0 0 0-.812-.39L3.825 5.5H1.5A.5.5 0 0 0 1 6v4a.5.5 0 0 0 .5.5h2.325l2.363 1.89A.5.5 0 0 0 7 12zM4.312 6.39 6 5.04v5.92L4.312 9.61A.5.5 0 0 0 4 9.5H2v-3h2a.5.5 0 0 0 .312-.11"/>
+                </svg>
+            </button>
+        </div>
         <div id="fretboardWrapper">
             <div id="fretboardContainer"></div>
         </div>
-        <div id="possibleGrips" class="border rounded mt-3 p-4 d-flex flex-wrap gap-2 justify-content-center">    
+        <div id="possibleGrips" class="border rounded m-3 p-4 d-flex flex-wrap gap-2 justify-content-center">    
             <p class="text-muted mb-1">Enter a chord in the selector</p>
         </div>
     </div>
@@ -166,6 +183,24 @@ ob_start();
             }
         });
     }
+
+    function getRadioMidis() {
+        const radios = document.querySelectorAll('input.fretboardRadio');
+        const groupNames = [...new Set([...radios].map(r => r.name))];
+        return groupNames.map(name => {
+            const checked = document.querySelector(`input[name="${name}"]:checked`);
+            return checked ? checked.dataset.midi : "x";
+        }).reverse();
+    }
+
+    document.getElementById('playSoundButton').addEventListener('click', () => {
+        midiNotes = getRadioMidis();
+        console.log("Playing notes with MIDI values:", midiNotes);
+        console.log("Corresponding note names:", midiNotes.map(midi => midi === "x" ? ["x", 0] : [NoteUtilities.getNoteName(midi),NoteUtilities.getOctave(midi)]));
+
+        const notesWithOctaves = midiNotes.map(midi => midi === "x" ? ["x", 0] : [NoteUtilities.getNoteName(midi),NoteUtilities.getOctave(midi)]);
+        PlayChord(notesWithOctaves);
+    });
 </script>
 
 
