@@ -22,7 +22,7 @@ function generateFretboard(stringCount = 6, fretCount = 22) {
             noteName = NoteUtilities.getNoteName(midiNote);
             noteRender = NoteUtilities.getNoteRender(midiNote);
 
-            fretSpacing = 1400 * (1 / Math.pow(2, i / 24)) * k
+            fretSpacing = 2000 * (1 / Math.pow(2, i / 24)) * k;
 
             // use fretSpacing for realism
             html += `

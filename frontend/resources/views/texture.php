@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+
     <style>
         .suede-bg {
             position: relative;
@@ -42,11 +44,16 @@
             );
         }
     
+        .thingy {
+            height: 300px;
+            width: 300px;
+            margin: 50px;
+        }
     </style>
 </head>
 <body style="margin: 0;">
     <div class="suede-bg" style="width: 100vw; height: 200vh;">
-
+        <div class="thingy shadow border border-dark-subtle rounded suede-bg"></div>
     </div>
 
 <script>
@@ -69,10 +76,10 @@ function createSuedeTexture(container) {
 
         for (let i = 0; i < img.data.length; i += 4) {
 
-            const grain = 40 + Math.random() * 30;
+            const grain = 100 + Math.random() * 30;
 
-            img.data[i] = grain;
-            img.data[i+1] = grain;
+            img.data[i] = grain + 10;
+            img.data[i+1] = grain + 5;
             img.data[i+2] = grain;
             img.data[i+3] = 255;
         }
@@ -88,6 +95,8 @@ function createSuedeTexture(container) {
 document.querySelectorAll(".suede-bg")
     .forEach(createSuedeTexture);
 </script>
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 
 </body>
 </html>

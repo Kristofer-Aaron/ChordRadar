@@ -24,109 +24,268 @@ ob_start();
 ?>
 
 <main class="my-4">
-    <div class="border-top border-bottom py-4 bg-body-tertiary">
-        <div class="d-flex gap-2 ml-auto mb-3 justify-content-end">
-            <!-- <button class="btn btn-outline-secondary">R</button> -->
-            <button class="btn btn-outline-secondary d-none" id="resetButton" aria-label="Reset fretboard">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
-                    <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
-                </svg>
-            </button>
-        </div>
-        <div class="border rounded m-3 p-3">
-            <div class="button-group">
-                
-            </div>
+  <div class="container d-flex flex-column align-items-center">
 
+    <!-- ===================== -->
+    <!-- CHORD SELECTOR (TOP) -->
+    <!-- ===================== -->
+    <div class="w-100 border rounded p-3 mb-4">
+  <h5 class="text-center mb-3">Select Chord</h5>
 
+  <!-- ROOT NOTE -->
+  <div class="mb-3">
+    <label class="form-label">Root Note</label>
+    <div class="btn-group flex-wrap w-100">
 
+      <!-- Notes -->
+      <input type="radio" class="btn-check" name="rootNote" id="rootC" value="C">
+      <label class="btn btn-outline-secondary" for="rootC">C</label>
 
-            <select class="form-select" id="rootNoteSelect" aria-label="Default select example">
-                <option value="" selected>Select Root note</option>
-                <option value="C">C</option>
-                <option value="C#">C#</option>
-                <option value="D">D</option>
-                <option value="D#">D#</option>
-                <option value="E">E</option>
-                <option value="F">F</option>
-                <option value="F#">F#</option>
-                <option value="G">G</option>
-                <option value="G#">G#</option>
-                <option value="A">A</option>
-                <option value="A#">A#</option>
-                <option value="B">B</option>
-            </select>
+      <input type="radio" class="btn-check" name="rootNote" id="rootCsharp" value="C#">
+      <label class="btn btn-outline-secondary" for="rootCsharp">C#</label>
 
-            <select class="form-select" id="tritoneSelect" aria-label="Default select example">
-                <option value="" selected>Select Tritone</option>
-                <option value="maj">Major</option>
-                <option value="min">Minor</option>
-                <option value="sus2">Suspended 2</option>
-                <option value="sus4">Suspended 4</option>
-                <option value="5">5th</option>
-                <option value="dim">Diminished</option>
-                <option value="aug">Augmented</option>
-            </select>
+      <input type="radio" class="btn-check" name="rootNote" id="rootD" value="D">
+      <label class="btn btn-outline-secondary" for="rootD">D</label>
 
-            <select class="form-select" id="addSelect" aria-label="Default select example">
-                <option value="" selected>Select Add</option>
-                <option value="">None</option>
-                <option value="m2">Minor 2nd</option>
-                <option value="M2">Major 2nd</option>
-                <option value="m3">Minor 3rd</option>
-                <option value="M3">Major 3rd</option>
-                <option value="4">Perfect 4th</option>
-                <option value="A4">Augmented 4th</option>
-                <option value="D5">Diminished 5th</option>
-                <option value="5">Perfect 5th</option>
-                <option value="m6">Minor 6th</option>
-                <option value="M6">Major 6th</option>
-                <option value="m7">Minor 7th</option>
-                <option value="M7">Major 7th</option>
-            </select>
+      <input type="radio" class="btn-check" name="rootNote" id="rootDsharp" value="D#">
+      <label class="btn btn-outline-secondary" for="rootDsharp">D#</label>
 
-            <select class="form-select" id="slashNoteSelect" aria-label="Default select example">
-                <option value="" selected>Select Slash note</option>
-                <option value="C">C</option>
-                <option value="C#">C#</option>
-                <option value="D">D</option>
-                <option value="D#">D#</option>
-                <option value="E">E</option>
-                <option value="F">F</option>
-                <option value="F#">F#</option>
-                <option value="G">G</option>
-                <option value="G#">G#</option>
-                <option value="A">A</option>
-                <option value="A#">A#</option>
-                <option value="B">B</option>
-            </select>
+      <input type="radio" class="btn-check" name="rootNote" id="rootE" value="E">
+      <label class="btn btn-outline-secondary" for="rootE">E</label>
 
+      <input type="radio" class="btn-check" name="rootNote" id="rootF" value="F">
+      <label class="btn btn-outline-secondary" for="rootF">F</label>
 
-            <div class="my-2">
-                <label for="gripSpanInput">Grip Span</label>
-                <input class="form-control" name="gripSpan" type="number" value="3" min="1" max="12" id="gripSpanInput" placeholder="Grip span (default 3)">
-            </div>
+      <input type="radio" class="btn-check" name="rootNote" id="rootFsharp" value="F#">
+      <label class="btn btn-outline-secondary" for="rootFsharp">F#</label>
 
-            <button class="btn btn-primary" onclick="ExploreChord()">Explore Chord</button>
-        </div>
-        <div class="d-flex gap-2 ml-auto m-3 justify-content-end">
-            <button class="btn btn-outline-secondary" id="playSoundButton" aria-label="Play sound">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-volume-up" viewBox="0 0 16 16">
-                    <path d="M11.536 14.01A8.47 8.47 0 0 0 14.026 8a8.47 8.47 0 0 0-2.49-6.01l-.708.707A7.48 7.48 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303z"/>
-                    <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.48 5.48 0 0 1 11.025 8a5.48 5.48 0 0 1-1.61 3.89z"/>
-                    <path d="M10.025 8a4.5 4.5 0 0 1-1.318 3.182L8 10.475A3.5 3.5 0 0 0 9.025 8c0-.966-.392-1.841-1.025-2.475l.707-.707A4.5 4.5 0 0 1 10.025 8M7 4a.5.5 0 0 0-.812-.39L3.825 5.5H1.5A.5.5 0 0 0 1 6v4a.5.5 0 0 0 .5.5h2.325l2.363 1.89A.5.5 0 0 0 7 12zM4.312 6.39 6 5.04v5.92L4.312 9.61A.5.5 0 0 0 4 9.5H2v-3h2a.5.5 0 0 0 .312-.11"/>
-                </svg>
-            </button>
-        </div>
-        <div id="fretboardWrapper">
-            <div id="fretboardContainer"></div>
-        </div>
-        <div id="possibleGrips" class="border rounded m-3 p-4 d-flex flex-wrap gap-2 justify-content-center">    
-            <p class="text-muted mb-1">Enter a chord in the selector</p>
-        </div>
+      <input type="radio" class="btn-check" name="rootNote" id="rootG" value="G">
+      <label class="btn btn-outline-secondary" for="rootG">G</label>
+
+      <input type="radio" class="btn-check" name="rootNote" id="rootGsharp" value="G#">
+      <label class="btn btn-outline-secondary" for="rootGsharp">G#</label>
+
+      <input type="radio" class="btn-check" name="rootNote" id="rootA" value="A">
+      <label class="btn btn-outline-secondary" for="rootA">A</label>
+
+      <input type="radio" class="btn-check" name="rootNote" id="rootAsharp" value="A#">
+      <label class="btn btn-outline-secondary" for="rootAsharp">A#</label>
+
+      <input type="radio" class="btn-check" name="rootNote" id="rootB" value="B">
+      <label class="btn btn-outline-secondary" for="rootB">B</label>
+
     </div>
+  </div>
+
+  <!-- CHORD TYPE -->
+  <div class="mb-3">
+    <label class="form-label">Chord Type</label>
+    <div class="btn-group flex-wrap w-100">
+
+      <input type="radio" class="btn-check" name="tritone" id="triMaj" value="maj">
+      <label class="btn btn-outline-secondary" for="triMaj">Maj</label>
+
+      <input type="radio" class="btn-check" name="tritone" id="triMin" value="min">
+      <label class="btn btn-outline-secondary" for="triMin">Min</label>
+
+      <input type="radio" class="btn-check" name="tritone" id="triSus2" value="sus2">
+      <label class="btn btn-outline-secondary" for="triSus2">Sus2</label>
+
+      <input type="radio" class="btn-check" name="tritone" id="triSus4" value="sus4">
+      <label class="btn btn-outline-secondary" for="triSus4">Sus4</label>
+
+      <input type="radio" class="btn-check" name="tritone" id="tri5" value="5">
+      <label class="btn btn-outline-secondary" for="tri5">5</label>
+
+      <input type="radio" class="btn-check" name="tritone" id="triDim" value="dim">
+      <label class="btn btn-outline-secondary" for="triDim">Dim</label>
+
+      <input type="radio" class="btn-check" name="tritone" id="triAug" value="aug">
+      <label class="btn btn-outline-secondary" for="triAug">Aug</label>
+
+    </div>
+  </div>
+
+  <!-- ADD -->
+  <div class="mb-3">
+    <label class="form-label">Add</label>
+    <div class="btn-group flex-wrap w-100">
+
+      <input type="radio" class="btn-check" name="add" id="addNone" value="" checked>
+      <label class="btn btn-outline-secondary" for="addNone">None</label>
+
+      <input type="radio" class="btn-check" name="add" id="addM7" value="M7">
+      <label class="btn btn-outline-secondary" for="addM7">M7</label>
+
+      <input type="radio" class="btn-check" name="add" id="addm7" value="m7">
+      <label class="btn btn-outline-secondary" for="addm7">m7</label>
+
+      <input type="radio" class="btn-check" name="add" id="add9" value="9">
+      <label class="btn btn-outline-secondary" for="add9">9</label>
+
+    </div>
+  </div>
+
+  <!-- SLASH NOTE -->
+  <div class="mb-3">
+    <label class="form-label">Slash Note</label>
+    <div class="btn-group flex-wrap w-100">
+
+      <input type="radio" class="btn-check" name="slashNote" id="slashNone" value="" checked>
+      <label class="btn btn-outline-secondary" for="slashNone">None</label>
+
+      <!-- reuse notes -->
+      <input type="radio" class="btn-check" name="slashNote" id="slashC" value="C">
+      <label class="btn btn-outline-secondary" for="slashC">C</label>
+
+      <input type="radio" class="btn-check" name="slashNote" id="slashD" value="D">
+      <label class="btn btn-outline-secondary" for="slashD">D</label>
+
+      <input type="radio" class="btn-check" name="slashNote" id="slashE" value="E">
+      <label class="btn btn-outline-secondary" for="slashE">E</label>
+
+      <input type="radio" class="btn-check" name="slashNote" id="slashF" value="F">
+      <label class="btn btn-outline-secondary" for="slashF">F</label>
+
+      <input type="radio" class="btn-check" name="slashNote" id="slashG" value="G">
+      <label class="btn btn-outline-secondary" for="slashG">G</label>
+
+      <input type="radio" class="btn-check" name="slashNote" id="slashA" value="A">
+      <label class="btn btn-outline-secondary" for="slashA">A</label>
+
+      <input type="radio" class="btn-check" name="slashNote" id="slashB" value="B">
+      <label class="btn btn-outline-secondary" for="slashB">B</label>
+
+    </div>
+  </div>
+
+  <!-- GRIP SPAN -->
+  <div class="mb-3">
+    <label class="form-label">Grip Span</label>
+    <input class="form-control" type="number" value="3" min="1" max="12" id="gripSpanInput">
+  </div>
+
+  <!-- BUTTON -->
+  <div class="text-center">
+    <button class="btn btn-primary" onclick="ExploreChord()">Explore Chord</button>
+  </div>
+</div>
+
+
+    <!-- ===================== -->
+    <!-- FRETBOARD (CENTER) -->
+    <!-- ===================== -->
+    <div class="fretboard-outer mb-4">
+      <div class="fretboard-inner border-top border-bottom py-4 bg-body-tertiary">
+
+        <div class="d-flex gap-2 mb-3 justify-content-end px-2">
+          <button class="btn btn-outline-secondary square-btn d-none" id="resetButton"></button>
+
+          <button class="btn btn-outline-secondary square-btn" id="playSoundButton">
+            <!-- SVG stays same -->
+          </button>
+        </div>
+
+        <div id="fretboardWrapper">
+          <div id="fretboardContainer"></div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ===================== -->
+    <!-- BOTTOM (RESPONSIVE) -->
+    <!-- ===================== -->
+    <div class="row w-100">
+
+      <!-- GRIPS -->
+      <div class="col-12 col-md-6 mb-3">
+        <div class="border rounded p-3 h-100">
+          <h5 class="text-center mb-3">Found Grips</h5>
+
+          <div id="possibleGrips" class="d-flex flex-column align-items-center gap-2 w-100">
+            <p class="text-muted text-center mb-1">Enter a chord in the selector</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="col-12 col-md-6 mb-3">
+        <div class="border rounded p-3 h-100">
+          <h5 class="text-center mb-3">Guitar Settings</h5>
+
+          <div class="mb-3">
+            <label class="form-label">Tuning</label>
+            <select class="form-select">
+              <option>Standard</option>
+              <option>Drop D</option>
+              <option>Open G</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Handedness</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="handedness" checked>
+              <label class="form-check-label">Right</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="handedness">
+              <label class="form-check-label">Left</label>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Note Display</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="noteDisplay" checked>
+              <label class="form-check-label">Sharp (#)</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="noteDisplay">
+              <label class="form-check-label">Flat (b)</label>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
 </main>
+
+<style>
+    /* Fretboard responsive behavior */
+.fretboard-outer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.fretboard-inner {
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Square buttons */
+.square-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Grips styling */
+#possibleGrips > * {
+  width: 100%;
+  text-align: center;
+  cursor: pointer;
+}
+</style>
 
 <script>
 

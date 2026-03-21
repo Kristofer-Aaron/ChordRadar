@@ -17,7 +17,8 @@ $scripts = [
     "note-utilities.js",
     "generate-fretboard.js",
     "analyze.js",
-    "sound-generator.js"
+    "sound-generator.js",
+    "suede-texture-renderer.js"
 ];
 
 
@@ -25,30 +26,110 @@ ob_start();
 ?>
 
 <main class="my-4">
-    <div class="border-top border-bottom py-4 bg-body-tertiary">
-        <div class="d-flex gap-2 ml-auto mb-3 justify-content-end">
-            <!-- <button class="btn btn-outline-secondary">R</button> -->
-            <button class="btn btn-outline-secondary" id="playSoundButton" aria-label="Play sound">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-volume-up" viewBox="0 0 16 16">
-                    <path d="M11.536 14.01A8.47 8.47 0 0 0 14.026 8a8.47 8.47 0 0 0-2.49-6.01l-.708.707A7.48 7.48 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303z"/>
-                    <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.48 5.48 0 0 1 11.025 8a5.48 5.48 0 0 1-1.61 3.89z"/>
-                    <path d="M10.025 8a4.5 4.5 0 0 1-1.318 3.182L8 10.475A3.5 3.5 0 0 0 9.025 8c0-.966-.392-1.841-1.025-2.475l.707-.707A4.5 4.5 0 0 1 10.025 8M7 4a.5.5 0 0 0-.812-.39L3.825 5.5H1.5A.5.5 0 0 0 1 6v4a.5.5 0 0 0 .5.5h2.325l2.363 1.89A.5.5 0 0 0 7 12zM4.312 6.39 6 5.04v5.92L4.312 9.61A.5.5 0 0 0 4 9.5H2v-3h2a.5.5 0 0 0 .312-.11"/>
-                </svg>
-            </button>
-            <button class="btn btn-outline-secondary" id="resetButton" aria-label="Reset fretboard">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
-                    <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
-                </svg>
-            </button>
+  <div class="d-flex flex-column align-items-center min-vw-100">
+
+    <!-- Fretboard -->
+    <div class="border-top border-bottom rounded-0 border-md-1 py-4 p-md-4 bg-body-tertiary mb-4 w-auto mw-100">
+      <div class="d-flex gap-2 mb-3 px-4 px-md-0">
+
+        <!-- Square buttons -->
+
+        <button class="btn btn-outline-secondary square-btn" id="resetButton">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+          </svg>
+        </button>
+
+        <button class="btn btn-outline-secondary square-btn" id="playSoundButton">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-volume-up" viewBox="0 0 16 16">
+            <path d="M11.536 14.01A8.47 8.47 0 0 0 14.026 8a8.47 8.47 0 0 0-2.49-6.01l-.708.707A7.48 7.48 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div id="fretboardWrapper">
+        <div id="fretboardContainer">
+
         </div>
-        <div id="fretboardWrapper">
-            <div id="fretboardContainer"></div>
+      </div>
+    </div>
+
+    <!-- Bottom section -->
+    <div class="row w-100 justify-content-center">
+
+      <!-- Possible Chords -->
+      <div class="col-12 col-md-3 mb-3">
+        <div class="border rounded p-3 h-100 bg-body-tertiary">
+          <h5 class="text-center mb-3">Possible Chords</h5>
+          <hr>
+
+          <div id="possibleChords" class="d-flex flex-column align-items-center gap-2 w-100">
+            <p class="text-muted text-center mb-1">Enter a chord in the fretboard</p>
+          </div>
         </div>
-        <div id="possibleChords" class="border rounded mt-3 p-4 d-flex flex-wrap gap-2 justify-content-center">    
-            <p class="text-muted mb-1">Enter a chord in the fretboard</p>
+      </div>
+
+      <!-- Settings -->
+      <div class="col-12 col-md-3 mb-3">
+        <div class="border rounded p-3 h-100 bg-body-tertiary">
+          <h5 class="text-center mb-3">Guitar Settings</h5>
+
+          <hr>
+          <div class="mb-3">
+            <label class="form-label">Tuning</label>
+            <select class="form-select">
+              <option>Standard</option>
+              <option>Drop D</option>
+              <option>Open G</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Handedness</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="handedness" checked>
+              <label class="form-check-label">Right</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="handedness">
+              <label class="form-check-label">Left</label>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Note Display</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="noteDisplay" checked>
+              <label class="form-check-label">Sharp (#)</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="noteDisplay">
+              <label class="form-check-label">Flat (b)</label>
+            </div>
+          </div>
         </div>
+      </div>
+
+    </div>
+
+  </div>
 </main>
+
+<style>
+  .square-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Make chord items full width + centered */
+  #possibleChords > * {
+    width: 100%;
+    text-align: center;
+  }
+</style>
 
 <script>
 
