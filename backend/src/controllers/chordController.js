@@ -60,6 +60,28 @@ export const ChordController = {
 		}
 	},
 
+	async getUserChords(req, res) {
+		try {
+			// Extract Bearer token
+			const token = req.headers.authorization.startsWith("Bearer ") ? req.headers.authorization.split(" ")[1] : null;
+
+			// Find user by access token
+			const user = await UserModel.findByAccessToken(token);
+			if (!user) {
+				return res.status(401).json({ error: "Unauthorized: invalid token" });
+			}
+			const userId = user.user_id ?? user.id;
+
+			// Fetch chords for current user
+			const chords = await ChordModel.findUserChords(userId);
+
+			return res.status(200).json(chords);
+		} catch (err) {
+			console.error("[getUserChords] error:", err);
+			return res.status(500).json({ error: "Internal Server Error" });
+		}
+	},
+
 	async create(req, res) {
 		const { notation, tuning, grip } = req.body ?? {};
 		const user = await UserModel.findByAccessToken(req.headers.authorization.split(' ')[1]);
@@ -99,20 +121,71 @@ export const ChordController = {
 	*/
 
 	async remove(req, res) {
+		// return 404 error if the chord was nout found
 		try {
-			await ChordModel.remove(req.params.id);
-			res.status(204).send();
+			const { id } = req.params;
+			const chordId = Number(id);
+
+			const token = req.headers.authorization?.split(" ")[1];
+			const user = token ? await UserModel.findByAccessToken(token) : null;
+			const userId = user.user_id ?? user.id;
+
+			if (user.role === "admin") {
+				await ChordModel.remove(chordId);
+				return res.status(204).send();
+			} else {
+				await ChordModel.removeUserChordRelation(userId, chordId);
+				return res.status(204).send();
+			}
 		} catch (err) {
-			res.status(err.status || 500).json({ error: err.message });
+			const status = err.status ?? 500;
+			return res.status(status).json({ error: err.message });
 		}
 	},
 
 	async patch(req, res) {
 		try {
-			const updated = await ChordModel.patch(req.params.id, req.body);
-			res.json(updated);
-		} catch (err) {
-			res.status(err.status || 500).json({ error: err.message });
-		}
+			const { id } = req.params;
+			const chordId = Number(id);
+			if (!Number.isFinite(chordId)) {
+			  return res.status(400).json({ message: "Invalid ID format" });
+			}
+
+			// Ensure the chord with :id exists
+			//(await ChordModel.findBySelector({ selector: "notation", selectorValue: notation, tuningValue: tuning })).find(r => r.grip === grip);
+			const current = await ChordModel.findById({ id: chordId });
+			if (!current) {
+			  return res.status(404).json({ message: "Chord not found" });
+			}
+
+			const target = {
+				notation: value.notation ?? current.notation,
+				tuning:   value.tuning   ?? current.tuning,
+				grip:     value.grip     ?? current.grip,
+			};
+			
+			// If nothing changes, you could short‑circuit here (optional):
+			// if (target.notation === current.notation &&
+			//     target.tuning   === current.tuning &&
+			//     target.grip     === current.grip) {
+			//   return res.status(200).json(current);
+			// }
+	  
+			// Duplicate check using findBySelector
+			const rows = await ChordModel.findBySelector({ selector: "notation", selectorValue: target.notation, tuningValue: target.tuning });
+	  
+			const duplicate = rows.find(r => r.grip === target.grip && r.id !== chordId);
+			if (duplicate) {
+			  return res.status(409).json({
+				error: "Another chord already exists with this notation, tuning, and grip",
+			  });
+			}
+	  
+			// Perform patch
+			const updated = await ChordModel.patch(chordId, value);
+			return res.status(200).json(updated);
+		  } catch (err) {
+			return res.status(err.status ?? 500).json({ error: err.message });
+		  }	  
 	},
 };

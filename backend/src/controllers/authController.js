@@ -8,13 +8,13 @@ import { TokenModel } from "../models/tokenModel.js";
 import { generateQrDataUrl } from "../utils/qrcode.js";
 import QRCode from 'qrcode';
 import { generateTotpSecret, buildOtpAuthUrl, verifyTotp, generateBackupCodes } from "../utils/totp.js";
+//import { json } from "body-parser";
 
 export const AuthController = {
   async login(req, res) {
     try {
       const { email_address, password } = req.body || {};
       const rememberMe = req.query?.['remember-me'] == "true" ? true : false;
-      console.log("Remember param:", rememberMe);
       if (!email_address || !password) { return res.status(400).json({ error: 'Missing credentials' }); }
 
       // Load user by email (generic error if not found)
@@ -62,7 +62,6 @@ export const AuthController = {
 
     // Match login() behavior: parse remember-me from query string
     const rememberMe = req.query?.['remember-me'] == "true" ? true : false;
-    console.log("Remember param:", rememberMe);
 
     // Basic input guard (consistent with login())
     if (!email_address || !totp_token) {
@@ -150,7 +149,7 @@ export const AuthController = {
       const now = new Date();
 
       //Insert new record after validating the credentials given by the user
-     const result = await UserModel.create({ user_name: user_name, first_name: first_name, last_name: last_name, email_address: email_address, password_hash: passwordHash, password_changed_at: now, account_created_at: now, last_login_at: now, preferences: preferences });
+      const result = await UserModel.create({ user_name: user_name, first_name: first_name, last_name: last_name, email_address: email_address, password_hash: passwordHash, password_changed_at: now, account_created_at: now, last_login_at: now, preferences: preferences });
       const userId = result.id;
 
       // Generate and insert email verification token
@@ -160,7 +159,7 @@ export const AuthController = {
      await TokenModel.insertUserToken(userId, emailToken, 'email_verification', now, expiresAt);
 
      //Send verification email
-      const verificationLink = `http://localhost:3030/auth/verify?token=${emailToken}`;
+      const verificationLink = `http://${process.env.HOST}:${process.env.PORT}/auth/verify?token=${emailToken}`;
       await sendEmail(
         email_address,
         "Verify your email",
@@ -329,7 +328,7 @@ async totpConfirm(req, res) {
 
     const ok = verifyTotp({ token: String(code), secret });
     if (!ok) {
-      return res.status(422).json({ error: 'Invalid 2FA code' });
+      return res.status(422).json({ error: 'Invalid TOTP token' });
     }
 
     // Enable 2FA
@@ -340,7 +339,9 @@ async totpConfirm(req, res) {
 
     // Generate and persist backup codes (JSON)
     const backups = generateBackupCodes();
-    const saved = await UserModel.setBackupCodes(targetId, JSON.stringify(backups));
+    // Hash generated backup codes before inserting into database
+    const backupsHash = await Promise.all(backups.map(backup => bcrypt.hash(backup, 10)));
+    const saved = await UserModel.setBackupCodes(targetId, JSON.stringify(backupsHash));
     if (!saved) {
       return res.status(500).json({ error: 'Failed to store backup codes' });
     }
@@ -369,7 +370,7 @@ async totpDisable(req, res) {
       return res.status(200).json({ ok: true, message: 'Two-factor authentication already disabled.' });
     }
 
-    const { password, totp_token, backupCode } = req.body || {};
+    const { password, totp_token, backup_code } = req.body || {};
     let verified = false;
 
     // 1) Verify via password (preferred if available)
@@ -392,22 +393,21 @@ async totpDisable(req, res) {
     }
 
     // 3) Verify via backup code (consume on success)
-    if (!verified && typeof backupCode === 'string' && backupCode.trim().length > 0) {
-      const provided = backupCode.trim();
+    if (!verified && typeof backup_code === 'string' && backup_code.trim().length > 0) {
+      const provided = backup_code.trim();
       const backups = JSON.parse(user.two_factor_backup || '[]');
-      const idx = backups.findIndex(c => crypto.timingSafeEqual(c, provided));
-      if (idx === -1) {
+      const ok = await Promise.all(backups.map(backup => bcrypt.compare(provided, backup)));
+      if (ok.findIndex(Boolean) === -1) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
-      // Consume the used backup code
-      backups.splice(idx, 1);
-      await UserModel.setBackupCodes(user.id, JSON.stringify(backups));
+      // Remove each backup code from database
+      await UserModel.setBackupCodes(user.id, JSON.stringify(null));
       verified = true;
     }
 
     if (!verified) {
       return res.status(400).json({
-        error: 'Provide password, a valid TOTP code, or a backup code to disable 2FA'
+        error: 'Provide password, a valid TOTP code, or a backup code to disable TOTP authentication method'
       });
     }
 

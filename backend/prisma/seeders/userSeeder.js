@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,7 +15,7 @@ async function main() {
   const users = JSON.parse(raw);
 
   for (const u of users) {
-    // Check existence by email OR username (adjust if your schema uses different unique fields)
+    // Check existence by email OR username
     const exists = await prisma.user.findFirst({
       where: {
         OR: [
@@ -39,7 +39,7 @@ async function main() {
       two_factor_enabled: false,
       two_factor_method: null,
       two_factor_secret: null,
-      two_factor_backup: [],
+      two_factor_backup: Prisma.DbNull, // SQL NULL in the database for JSON-mapped column
       role: u.role ?? "user",
       status: u.status ?? "active",
       preferences: u.preferences ?? { theme: "dark", notifications: true },
