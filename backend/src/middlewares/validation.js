@@ -1,5 +1,38 @@
 import UserModel from '../models/userModel.js';
 
+export const validate = (schemas = {}, options = {}) => {
+  const {
+    // Default statuses: 400 for input, 401 for auth header (customizable).
+    status = { headers: 401, params: 400, query: 400, body: 400 },
+    joi = { abortEarly: false, convert: true, stripUnknown: true },
+  } = options;
+
+  return (req, res, next) => {
+    try {
+      // Validate in this order to allow header errors to show first when present
+      for (const part of ["headers", "params", "query", "body"]) {
+        const schema = schemas[part];
+        if (!schema) continue;
+
+        const { error, value } = schema.validate(req[part], joi);
+        if (error) {
+          const httpStatus = status?.[part] ?? 400;
+          return res.status(httpStatus).json({
+            error: "Validation failed",
+            details: error.details.map((d) => d.message),
+          });
+        }
+        // assign validated (and normalized) value back
+        req[part] = value;
+      }
+
+      return next();
+    } catch (err) {
+      return next(err);
+    }
+  };
+};
+
 export function validateBody(schema) {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, { abortEarly: false });

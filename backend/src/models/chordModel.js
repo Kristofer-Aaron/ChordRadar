@@ -127,23 +127,6 @@ export const ChordModel = {
     return { user_id, chord_id, created };
   },
 
-  async update(id, data) {
-    const { notation_id, tuning_id, grip_id } = data;
-
-    const [existing] = await pool.query("SELECT * FROM chords WHERE notation_id = ? AND tuning_id = ? AND grip_id = ? AND id != ?",
-      [notation_id, tuning_id, grip_id, id]);
-
-    if (existing.length > 0) {
-      const error = new Error("Another chord already exists with this notation, tuning, and grip");
-      error.status = 409;
-      throw error;
-    }
-
-    await pool.query("UPDATE chords SET notation_id = ?, tuning_id = ?, grip_id = ? WHERE id = ?",
-      [notation_id, tuning_id, grip_id, id]);
-    return this.findById(id);
-  },
-
   async remove(id) {
     await pool.query("DELETE FROM chords WHERE id = ?", [id]);
     return { message: "Chord deleted" };
@@ -157,13 +140,17 @@ export const ChordModel = {
     return { user_id, chord_id, removed: result.affectedRows > 0 };
   },
 
-  async patch(id, data) {
+  async patch(id, data = {}) {
     const chordId = Number(id);
+    if (!Number.isFinite(chordId)) {
+      const e = new Error("Invalid ID format");
+      e.status = 400;
+      throw e;
+    }
 
     const wantsNotation = Object.prototype.hasOwnProperty.call(data, "notation");
     const wantsTuning   = Object.prototype.hasOwnProperty.call(data, "tuning");
     const wantsGrip     = Object.prototype.hasOwnProperty.call(data, "grip");
-
     if (!wantsNotation && !wantsTuning && !wantsGrip) {
       const e = new Error("Provide at least one of: notation, tuning, grip");
       e.status = 400;
@@ -174,11 +161,8 @@ export const ChordModel = {
     try {
       await conn.beginTransaction();
 
-      // 1) Load current FK ids for the chord
-      const [rows] = await conn.query(
-        "SELECT notation_id, tuning_id, grip_id FROM chords WHERE id = ? LIMIT 1",
-        [chordId]
-      );
+      // 1) Ensure chord exists & read current FKs (double-safety; controller also checks)
+      const [rows] = await conn.query("SELECT notation_id, tuning_id, grip_id FROM chords WHERE id = ? LIMIT 1", [chordId]);
       const current = rows?.[0];
       if (!current) {
         const e = new Error("Chord not found");
@@ -186,22 +170,21 @@ export const ChordModel = {
         throw e;
       }
 
-      // 2) Resolve target FK ids from *human-readable* values (or keep current)
+      // Resolve target FK ids from human-readable values
       let targetNotationId = current.notation_id;
       let targetTuningId   = current.tuning_id;
       let targetGripId     = current.grip_id;
 
-      // Helper: upsert-by-value and return id (same approach used in create())
+      // Helper: upsert-by-value and return id
       const ensureIdByValue = async (table, column, value) => {
         const v = String(value).trim();
-        // Idempotent upsert: duplicates set LAST_INSERT_ID to existing id
         const [res] = await conn.query(
           `INSERT INTO ${table} (${column})
           VALUES (?)
           ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)`,
           [v]
         );
-        return res.insertId; // existing id if dup, new id if inserted
+        return res.insertId;
       };
 
       if (wantsNotation) {
@@ -234,26 +217,22 @@ export const ChordModel = {
         targetGripId = await ensureIdByValue("grips", "strings", norm);
       }
 
-      // 3) Attempt update only if something changed
+      // Apply update if something changed
       const changed =
         targetNotationId !== current.notation_id ||
         targetTuningId   !== current.tuning_id ||
         targetGripId     !== current.grip_id;
 
       if (changed) {
-        await conn.query(
-          "UPDATE chords SET notation_id = ?, tuning_id = ?, grip_id = ? WHERE id = ?",
-          [targetNotationId, targetTuningId, targetGripId, chordId]
-        );
+        await conn.query("UPDATE chords SET notation_id = ?, tuning_id = ?, grip_id = ? WHERE id = ?", [targetNotationId, targetTuningId, targetGripId, chordId]);
       }
 
-      // 4) Return the updated chord with readable values
+      // 4) Return values (join lookup tables for human-readable fields)
       const [[updated]] = await conn.query(
         `SELECT c.id,
                 n.value   AS notation,
                 t.value   AS tuning,
-                g.strings AS grip,
-                c.notation_id, c.tuning_id, c.grip_id
+                g.strings AS grip
           FROM chords c
           JOIN notations n ON c.notation_id = n.id
           JOIN tunings   t ON c.tuning_id   = t.id
@@ -268,13 +247,12 @@ export const ChordModel = {
     } catch (err) {
       await conn.rollback();
 
-      // Gracefully map DB uniqueness violation to HTTP 409
+      // In case of a race: DB uniqueness (notation_id, tuning_id, grip_id) will throw ER_DUP_ENTRY -> map to 409
       if (err && err.code === "ER_DUP_ENTRY") {
         const e = new Error("Another chord already exists with this notation, tuning, and grip");
         e.status = 409;
         throw e;
       }
-
       throw err;
     } finally {
       conn.release();

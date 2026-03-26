@@ -1,8 +1,8 @@
 // routes/chordRoutes.js
 import express from 'express';
 import { ChordController } from '../controllers/chordController.js';
-import { createChordSchema, patchChordSchema } from '../schemas/chordSchema.js';
-import { validateBody } from '../middlewares/validation.js';
+import { getBySelectorParamsSchema, createChordBodySchema, patchChordBodySchema, idParamSchema } from '../schemas/chordSchema.js';
+import { validate } from '../middlewares/validation.js';
 import { authenticate, requireActiveToken, requireAdmin } from '../middlewares/authentication.js';
 
 const router = express.Router();
@@ -10,13 +10,12 @@ const router = express.Router();
 // Public routes
 router.get('/user-chords', authenticate, requireActiveToken, ChordController.getUserChords);
 router.get('/', ChordController.getAll);
-router.get('/:id', ChordController.getById);
-router.get('/:selector/:selectorValue/tuning/:tuningValue', ChordController.getBySelector);
+router.get('/:id', validate({ params: idParamSchema}), ChordController.getById);
+router.get('/:selector/:selectorValue/tuning/:tuningValue', validate({ params: getBySelectorParamsSchema }), ChordController.getBySelector);
 
 // Protected routes
-router.post('/', authenticate, requireActiveToken, validateBody(createChordSchema), ChordController.create);
-//router.put('/:id', authenticate, requireActiveToken, requireAdmin, ChordController.update);
-router.patch('/:id', authenticate, requireActiveToken, requireAdmin, ChordController.patch);
-router.delete('/:id', authenticate, requireActiveToken, validateBody(patchChordSchema), ChordController.remove);
+router.post('/', authenticate, requireActiveToken, validate({ body: createChordBodySchema }), ChordController.create);
+router.patch('/:id', authenticate, requireActiveToken, requireAdmin, validate({ params: idParamSchema, body: patchChordBodySchema }), ChordController.patch);
+router.delete('/:id', authenticate, requireActiveToken, validate({ params: idParamSchema }), ChordController.remove);
 
 export default router;
