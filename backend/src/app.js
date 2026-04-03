@@ -22,7 +22,7 @@ const allowedOrigins = [
     'http://127.0.01',
     'http://localhost',
     'http://localhost:80'
-  ];  
+  ];
 
 app.use(cors({
     origin(origin, cb) {
@@ -34,7 +34,7 @@ app.use(cors({
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,      // only if you actually need cookies/auth
+    credentials: true,      // only if cookies/auth needed
     maxAge: 86400,
   }));
   

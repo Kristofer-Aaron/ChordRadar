@@ -1,0 +1,701 @@
+openapi: 3.0.3
+info:
+  title: ChordRadar API
+  version: 1.0.0
+  description: |
+    REST API for authentication and user management.
+
+    Highlights:
+    - **JWT Bearer** auth, single active session policy
+    - **Idempotent** login if a valid Bearer token is provided
+    - **Email verification** flow on register and on email change (PATCH)
+    - **User PATCH** supports selective updates (email, 2FA flags, preferences, etc.)
+servers:
+  - url: http://localhost:3030
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Authentication & verification
+  - name: Users
+    description: User CRUD and partial updates
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login (idempotent with Bearer token or email+password)
+      description: |
+        - If **Authorization: Bearer &lt;jwt&gt;** is present and valid **and** an active session exists in DB,
+          returns **200 "Already logged in"** with the same token and expiry.
+        - Otherwise performs normal email+password login, enforcing **single active session** (409 if one exists).
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationOptional'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              credentialsLogin:
+                value: { email_address: "alice@example.com", password: "Secret123!" }
+      responses:
+        '200':
+          description: Already logged in OR new session issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                alreadyLoggedIn:
+                  value:
+                    message: "Already logged in"
+                    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    expires_at: "2025-12-21T00:56:02.000Z"
+                    user: { id: 1, user_name: "alice", email_address: "alice@example.com", role: "user" }
+                loginSuccessful:
+                  value:
+                    message: "Login successful"
+                    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    expires_at: "2025-12-21T00:56:02.000Z"
+                    user: { id: 1, user_name: "alice", email_address: "alice@example.com", role: "user" }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Account not active (email not verified or suspended)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Account is not active. Please verify your email or contact support." }
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "User not found" }
+        '409':
+          description: User already has an active session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: "User already logged in" }
+                  code: { type: string, example: "ALREADY_LOGGED_IN" }
+                  session:
+                    type: object
+                    properties:
+                      expires_at: { type: string, format: date-time }
+              example:
+                error: "User already logged in"
+                code: "ALREADY_LOGGED_IN"
+                session: { expires_at: "2025-12-21T00:56:02.000Z" }
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current session
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Logout successful" }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found or already logged out
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorWithCode' }
+              example: { error: "Session not found or already logged out", code: "SESSION_NOT_FOUND" }
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user and send verification email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+            example:
+              user_name: "alice"
+              first_name: "Alice"
+              last_name: "Doe"
+              email_address: "alice@example.com"
+              password: "Secret123!"
+              preferences: { theme: "dark" }
+      responses:
+        '201':
+          description: Registered; verification mail sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user: { $ref: '#/components/schemas/UserPublic' }
+              example:
+                message: "User registered successfully. Please check your email to verify your account."
+                user:
+                  id: 123
+                  user_name: "alice"
+                  first_name: "Alice"
+                  last_name: "Doe"
+                  email_address: "alice@example.com"
+                  role: "user"
+                  status: "pending"
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: "Missing required fields" }
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: "Email already registered" }
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /auth/verify:
+    get:
+      tags: [Auth]
+      summary: Verify email using token; issues API access token
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema: { type: string }
+          description: Email verification token sent to the user
+      responses:
+        '200':
+          description: Email verified; API access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Email verified successfully" }
+                  token: { type: string, description: "API access JWT" }
+              example:
+                message: "Email verified successfully"
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                invalid: { value: { message: "Invalid or expired token" } }
+                expired: { value: { message: "Token expired" } }
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  
+    post:
+      tags: [Auth]
+      operationId: loginTotp
+      summary: Login with email + TOTP to obtain an access token
+      description: |
+        Accepts an email address and a TOTP code and returns a short-lived JWT access token.
+
+        **Preconditions enforced by middleware:**
+        - The user's email must be verified (`requireEmailVerified`).
+        - The user's status must be active (`requireStatusActive`).
+
+        **Business rules:**
+        - TOTP must be enabled for the user; otherwise, login is rejected.
+        - If an `api_access` token already exists for the user (single-session policy), login is rejected.
+
+        **Token details:**
+        - Algorithm: `HS256`
+        - Expires in: `1h` (persisted with the same expiry in the token table)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginTotpRequest'
+            examples:
+              basic:
+                summary: Valid login payload
+                value:
+                  email_address: "user@example.com"
+                  totp_token: "123456"
+              eightDigits:
+                summary: 8-digit TOTP code example (if enabled in your TOTP policy)
+                value:
+                  email_address: "user@example.com"
+                  totp_token: "12345678"
+      responses:
+        '200':
+          description: Successful TOTP login; returns a JWT access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginTotpSuccess'
+              examples:
+                success:
+                  value:
+                    ok: true
+                    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6InVzZXIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDAzNjAwMH0.abc123DEFghiJKLmnOPqrsTUVwxyz-EXAMPLE"
+        '400':
+          description: Bad Request — validation failed or already logged in (single-session policy).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Missing or invalid fields
+                  value:
+                    error: "Invalid request body"
+                alreadyLoggedIn:
+                  summary: Single-session policy enforced
+                  value:
+                    error: "Already logged in"
+        '401':
+          description: Unauthorized — invalid credentials or TOTP not enabled for this user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidCredentials:
+                  value:
+                    error: "Invalid credentials"
+                totpDisabled:
+                  value:
+                    error: "TOTP login is disabled"
+        '403':
+          description: Forbidden — email not verified or account not active (middleware).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emailNotVerified:
+                  value:
+                    error: "Email not verified"
+                accountNotActive:
+                  value:
+                    error: "Account is not active"
+        '500':
+          description: Internal Server Error — server config error or unexpected failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverConfigError:
+                  value:
+                    error: "Server config error"
+                generic:
+                  value:
+                    error: "Internal Server Error"
+      x-codeSamples:
+        - lang: cURL
+          label: cURL
+          source: |
+            curl -X POST "http://localhost:3000/login/totp" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "email_address": "user@example.com",
+                "totp_token": "123456"
+              }'
+        - lang: JavaScript
+          label: fetch
+          source: |
+            fetch("http://localhost:3000/login/totp", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email_address: "user@example.com",
+                totp_token: "123456"
+              })
+            })
+            .then(r => r.json())
+            .then(console.log);
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List users
+      description: Returns all users. (Restrict to admins in production.)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Array of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UserPublic' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Users]
+      summary: Create a user
+      description: Typically admin-only. Validated by server schema.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPublic' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Email already in use
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user by ID
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPublic' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          $ref: '#/components/responses/ServerError'
+    put:
+      tags: [Users]
+      summary: Replace a user (full update)
+      description: Validates against the server's `userSchema`. Typically admin-only.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserPut' }
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPublic' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags: [Users]
+      summary: Delete a user
+      description: Typically admin-only.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: Deleted (no content)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          $ref: '#/components/responses/ServerError'
+    patch:
+      tags: [Users]
+      summary: Partially update a user (self or admin)
+      description: |
+        Allows **admin** or the **user themself** to update selected fields:
+        - `email_address` → resets `email_verified = 0`, creates a new `email_verification` token and sends a mail
+        - `two_factor_enabled`, `two_factor_method`, `two_factor_secret`, `two_factor_backup`
+        - `user_name`, `first_name`, `last_name`, `preferences`
+        - Admin-only: `role`, `status`, `email_verified`
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserPatch' }
+            examples:
+              toggle2FA:
+                value: { two_factor_enabled: true, two_factor_method: "google_authenticator" }
+              changeEmail:
+                value: { email_address: "newalice@example.com" }
+              adminSuspend:
+                value: { status: "suspended" }
+      responses:
+        '200':
+          description: Updated user (and possibly email re-verification info)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "User updated" }
+                  user: { $ref: '#/components/schemas/UserPublic' }
+                  email_verification_sent: { type: boolean }
+                  email_verification_expires_at: { type: string, format: date-time }
+        '400':
+          description: Invalid field or payload
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden (not self nor admin)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Target user not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Email already in use
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AuthorizationOptional:
+      in: header
+      name: Authorization
+      required: false
+      description: Optional Bearer token to attempt idempotent login.
+      schema:
+        type: string
+        example: "Bearer eyJhbGciOi..."
+    UserId:
+      in: path
+      name: id
+      required: true
+      description: Numeric user ID
+      schema: { type: integer, format: int32 }
+
+  responses:
+    Unauthorized:
+      description: Invalid or expired token / missing authorization
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            missing:
+              value: { error: "Authorization token missing" }
+            invalid:
+              value: { error: "Invalid or expired token" }
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "Internal Server Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      additionalProperties: false
+    ErrorWithCode:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            code: { type: string }
+
+    # ---------- Auth ----------
+    LoginRequest:
+      type: object
+      required: [email_address, password]
+      properties:
+        email_address: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+    LoginResponse:
+      type: object
+      properties:
+        message: { type: string, example: "Login successful" }
+        token: { type: string, description: "API access JWT" }
+        expires_at: { type: string, format: date-time }
+        user:
+          $ref: '#/components/schemas/UserMinimal'
+    RegisterRequest:
+      type: object
+      required: [user_name, first_name, last_name, email_address, password]
+      properties:
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        preferences:
+          description: Free-form JSON object stored server-side
+          type: object
+          additionalProperties: true
+
+    # ---------- Users ----------
+    Role:
+      type: string
+      enum: [user, admin]
+    Status:
+      type: string
+      enum: [active, pending, suspended]
+    TwoFactorMethod:
+      type: string
+      nullable: true
+      enum: [email, google_authenticator, microsoft_authenticator, null]
+
+    UserMinimal:
+      type: object
+      properties:
+        id: { type: integer, format: int32 }
+        user_name: { type: string }
+        email_address: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+
+    UserPublic:
+      type: object
+      properties:
+        id: { type: integer, format: int32 }
+        user_name: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
+        email_address: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        status: { $ref: '#/components/schemas/Status' }
+        email_verified: { type: boolean }
+        two_factor_enabled: { type: boolean }
+        # You can expose these if needed:
+        # two_factor_method: { $ref: '#/components/schemas/TwoFactorMethod' }
+        # last_login_at: { type: string, format: date-time }
+        # account_created_at: { type: string, format: date-time }
+
+    UserCreate:
+      type: object
+      required: [user_name, first_name, last_name, email_address, password]
+      properties:
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        role: { $ref: '#/components/schemas/Role', default: user }
+        status: { $ref: '#/components/schemas/Status', default: pending }
+        preferences:
+          type: object
+          additionalProperties: true
+
+    UserPut:
+      type: object
+      description: Full replacement payload (server validates with its own schema).
+      properties:
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        role: { $ref: '#/components/schemas/Role' }
+        status: { $ref: '#/components/schemas/Status' }
+        preferences:
+          type: object
+          additionalProperties: true
+      additionalProperties: false
+
+    UserPatch:
+      type: object
+      description: |
+        Partial update. Only include fields you want to change.
+        - Changing `email_address` resets `email_verified` to false and triggers a new verification email.
+        - When disabling 2FA you **may** clear secrets/backup codes server-side.
+      properties:
+        user_name: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
+        email_address: { type: string, format: email }
+        preferences:
+          type: object
+          additionalProperties: true
+        two_factor_enabled:
+          oneOf:
+            - { type: boolean }
+            - { type: integer, enum: [0, 1] }
+        two_factor_method: { $ref: '#/components/schemas/TwoFactorMethod' }
+        two_factor_secret:
+          type: string
+          nullable: true
+        two_factor_backup:
+          description: JSON array of backup codes (stored as JSON)
+          oneOf:
+            - type: array
+              items: { type: string }
+            - type: string
+        # Admin-only fields:
+        role: { $ref: '#/components/schemas/Role' }
+        status: { $ref: '#/components/schemas/Status' }
+        email_verified:
+          oneOf:
+            - { type: boolean }
+            - { type: integer, enum: [0, 1] }
+      additionalProperties: false
