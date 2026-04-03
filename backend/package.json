@@ -15,7 +15,8 @@
     "db:setup": "npm run generate && npm run migrate && npm run seed:chords",
     "db:backup": "node src/utils/dbBackup.js",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch"
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:verbose": "npm test -- --verbose"
   },
   "author": "",
   "license": "ISC",

@@ -134,7 +134,7 @@ export function ensureEmailUnique(field = 'email_address', idParam = 'id') {
       // If the route has an id (e.g., PUT /users/:id), allow if it's the same user
       const targetIdRaw = req.params?.[idParam];
 
-      // No id param (e.g., POST /register) → any existing email is a conflict
+      // No id param (e.g., POST /register)
       if (typeof targetIdRaw === 'undefined') {
         return res.status(409).json({ error: 'Email already in use' });
       }

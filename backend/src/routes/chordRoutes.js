@@ -1,4 +1,3 @@
-// routes/chordRoutes.js
 import express from 'express';
 import { ChordController } from '../controllers/chordController.js';
 import { getBySelectorParamsSchema, createChordBodySchema, patchChordBodySchema, idParamSchema } from '../schemas/chordSchema.js';

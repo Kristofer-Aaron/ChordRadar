@@ -47,6 +47,69 @@ const UserModel = {
 		await pool.query("DELETE FROM user_tokens WHERE user_id = ?", [id]);
 		return { message: "User deleted" };
 	},
+
+
+async patch(id, data = {}) {
+    const userId = Number(id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      const e = new Error("Invalid user id");
+      e.status = 400;
+      throw e;
+    }
+
+    // Allowing only a safe subset of columns to be changed
+    const allowed = new Map([
+      ["user_name", "user_name"],
+      ["first_name", "first_name"],
+      ["last_name", "last_name"],
+      ["email_address", "email_address"],
+      ["role", "role"],
+      ["status", "status"],
+      ["email_verified", "email_verified"],          
+      ["two_factor_enabled", "two_factor_enabled"],  
+      ["preferences", "preferences"],
+    ]);
+
+    const sets = [];
+    const params = [];
+
+    for (const [key, column] of allowed) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        let val = data[key];
+        if (key === "preferences" && val != null) {
+          // storing as JSON text
+          val = JSON.stringify(val);
+        }
+        if (key === "email_verified" || key === "two_factor_enabled") {
+          // normalizing booleans for TINYINT(1)
+          val = val ? 1 : 0;
+        }
+        sets.push(`${column} = ?`);
+        params.push(val);
+      }
+    }
+
+    if (sets.length === 0) {
+      const e = new Error("No updatable fields provided");
+      e.status = 400;
+      throw e;
+    }
+
+    try {
+      await pool.query(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`, [...params, userId]);
+      // return the fresh row
+      const [rows] = await pool.query("SELECT * FROM users WHERE id = ? LIMIT 1", [userId]);
+      return rows[0] || null;
+    } catch (err) {
+      // Unique email guard -> 409 Conflict
+      if (err && err.code === "ER_DUP_ENTRY") {
+        const e = new Error("A user with this email already exists");
+        e.status = 409;
+        throw e;
+      }
+      throw err;
+    }
+  },
 	
 async updateTwoFactorSecret(id, secret) {
     const [res] = await pool.query(

@@ -8,7 +8,6 @@ import { TokenModel } from "../models/tokenModel.js";
 import { generateQrDataUrl } from "../utils/qrcode.js";
 import QRCode from 'qrcode';
 import { generateTotpSecret, buildOtpAuthUrl, verifyTotp, generateBackupCodes } from "../utils/totp.js";
-//import { json } from "body-parser";
 
 export const AuthController = {
   async login(req, res) {
