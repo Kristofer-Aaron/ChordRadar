@@ -1,10 +1,10 @@
 openapi: 3.0.3
 info:
-  title: My Node.js API
+  title: ChordRadar Node.js API
   version: 1.0.0
   description: >
     API documentation generated from the current codebase.
-    Includes /auth, /api/chords, /api/notations, /api/tunings, and /api/grips.
+    Includes /auth, /users, /api/chords, /api/notations, /api/tunings, and /api/grips.
 
 servers:
   - url: http://localhost:3030
@@ -12,7 +12,9 @@ servers:
 
 tags:
   - name: Auth
-    description: Authentication, sessions, email verification, and TOTP 2FA
+    description: Authentication, sessions, email verification, and TOTP authentication
+  - name: Users
+    description: User management (admin) and self/admin user lookup
   - name: Chords
     description: Chord resources
   - name: Notations
@@ -82,7 +84,7 @@ paths:
   /auth/login/totp:
     post:
       tags: [Auth]
-      summary: Login with email and TOTP (2FA)
+      summary: Login with email and TOTP token
       description: >
         Issues a JWT bearer token when TOTP is enabled for the user and the 6-digit code is valid.
         Optional "remember-me" query extends token lifetime.
@@ -304,7 +306,7 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
-          description: User not found or 2FA not enrolled
+          description: User not found or TOTP authentication not enrolled
           content:
             application/json:
               schema:
@@ -313,14 +315,14 @@ paths:
                 userNotFound:
                   value: { error: "User not found" }
                 notEnrolled:
-                  value: { error: "2FA not enrolled for this user" }
+                  value: { error: "TOTP authentication not enrolled for this user" }
         "500":
           $ref: "#/components/responses/InternalError"
 
   /auth/totp/confirm:
     post:
       tags: [Auth]
-      summary: Confirm TOTP for current user (enable 2FA)
+      summary: Confirm TOTP for current user
       security:
         - bearerAuth: []
       requestBody:
@@ -355,7 +357,7 @@ paths:
                 noSecret:
                   value: { error: "No 2FA secret to confirm" }
                 missingCode:
-                  value: { error: "Missing 2FA code" }
+                  value: { error: "Missing TOTP token" }
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -382,7 +384,7 @@ paths:
       tags: [Auth]
       summary: Disable TOTP for current user
       description: >
-        Disables 2FA using one of:
+        Disables TOTP authentication using one of:
         - password
         - totp_token (6 digits)
         - backup_code
@@ -437,6 +439,228 @@ paths:
                 $ref: "#/components/schemas/Error"
               example:
                 error: "User not found"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List all users (admin only)
+      description: >
+        Returns all users from the database (raw rows). Admin access required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Array of users (admin view; may include sensitive fields)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Users]
+      summary: Create a user (admin only)
+      description: >
+        Creates a new user. Requires admin.
+        The validation schema requires password_hash and password_changed_at.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+            example:
+              user_name: "johnny"
+              first_name: "John"
+              last_name: "Doe"
+              email_address: "user@example.com"
+              password_hash: "$2b$10$................................................."
+              password_changed_at: "2026-01-01T10:00:00.000Z"
+              preferences:
+                theme: "dark"
+              role: "user"
+              status: "pending"
+              email_verified: false
+      responses:
+        "201":
+          description: Created user (admin view; returned object includes submitted fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserRecord"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/{selector}/{value}:
+    get:
+      tags: [Users]
+      summary: Get user by selector (self or admin)
+      description: >
+        Selector must be "id" or "email".
+        Returns a sanitized user object (does not include password_hash or 2FA secrets).
+        Requires authentication and active token.
+        Authorization allows self lookup or admin depending on middleware.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: selector
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [id, email]
+        - name: value
+          in: path
+          required: true
+          schema:
+            type: string
+          description: >
+            If selector=id, value must be digits. If selector=email, value must be a valid email.
+      responses:
+        "200":
+          description: User (sanitized view)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPublicSafe"
+              example:
+                id: 100
+                user_name: "johnny"
+                first_name: "John"
+                last_name: "Doe"
+                email_address: "user@example.com"
+                role: "user"
+                status: "active"
+                email_verified: true
+                two_factor_enabled: false
+        "400":
+          description: Invalid selector or value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalidId:
+                  value: { error: "Invalid user id" }
+                invalidEmail:
+                  value: { error: "Invalid email" }
+                unsupported:
+                  value: { error: "Unsupported selector: username" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+              example:
+                message: "User not found"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/{id}:
+    patch:
+      tags: [Users]
+      summary: Patch a user (admin only)
+      description: >
+        Updates a user using a restricted set of fields (no password changes here).
+        Returns a sanitized user object and attempts to parse preferences JSON.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPatchRequest"
+            example:
+              status: "suspended"
+              email_verified: false
+              preferences:
+                theme: "light"
+      responses:
+        "200":
+          description: Updated user (sanitized view)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPatchedResponse"
+              example:
+                id: 100
+                user_name: "johnny"
+                first_name: "John"
+                last_name: "Doe"
+                email_address: "user@example.com"
+                role: "user"
+                status: "suspended"
+                email_verified: false
+                two_factor_enabled: false
+                preferences:
+                  theme: "light"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "User not found"
+        "409":
+          description: Conflict (e.g., email already exists)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "A user with this email already exists"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Users]
+      summary: Delete a user (admin only)
+      description: Deletes the user and removes their tokens. Returns 204 No Content.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1070,6 +1294,16 @@ components:
       bearerFormat: JWT
 
   parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: Positive integer user id
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+
     ChordId:
       name: id
       in: path
@@ -1284,6 +1518,120 @@ components:
           type: string
         code:
           type: string
+
+    # ---------------- USERS ----------------
+
+    UserRecord:
+      type: object
+      description: >
+        Admin/raw user record. GET /users uses SELECT * FROM users, so this may include
+        additional DB columns beyond those listed here (password_hash, 2FA secrets, etc.).
+      properties:
+        id: { type: integer, format: int32 }
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email, maxLength: 255 }
+        password_hash: { type: string, maxLength: 255, description: "Bcrypt hash" }
+        password_changed_at: { type: string, format: date-time }
+        account_created_at: { type: string, format: date-time }
+        last_login_at: { type: string, format: date-time }
+        preferences:
+          oneOf:
+            - type: object
+            - type: string
+          description: Stored as JSON text in DB; may be returned as string depending on query path.
+        role:
+          type: string
+          enum: [user, admin]
+        status:
+          type: string
+          enum: [active, pending, suspended]
+        email_verified:
+          type: boolean
+        two_factor_enabled:
+          type: boolean
+        two_factor_method:
+          type: string
+          nullable: true
+        two_factor_secret:
+          type: string
+          nullable: true
+        two_factor_backup:
+          type: string
+          nullable: true
+      required: [id, user_name, first_name, last_name, email_address]
+
+    UserPublicSafe:
+      type: object
+      description: Sanitized user response (no password hash or 2FA secrets).
+      required: [id, user_name, first_name, last_name, email_address, role, status, email_verified, two_factor_enabled]
+      properties:
+        id: { type: integer, format: int32 }
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email, maxLength: 255 }
+        role: { type: string, enum: [user, admin] }
+        status: { type: string, enum: [active, pending, suspended] }
+        email_verified: { type: boolean }
+        two_factor_enabled: { type: boolean }
+
+    UserCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - user_name
+        - first_name
+        - last_name
+        - email_address
+        - password_hash
+        - password_changed_at
+        - preferences
+      properties:
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email, maxLength: 255 }
+        password_hash:
+          type: string
+          minLength: 50
+          maxLength: 255
+          description: >
+            Password hash (bcrypt). Route uses hashPasswordIfPresent middleware, but validation expects password_hash.
+        password_changed_at: { type: string, format: date-time }
+        preferences: { type: object }
+        role: { type: string, enum: [user, admin] }
+        status: { type: string, enum: [active, pending, suspended] }
+        email_verified: { type: boolean }
+        account_created_at: { type: string, format: date-time }
+        last_login_at: { type: string, format: date-time }
+
+    UserPatchRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email, maxLength: 255 }
+        role: { type: string, enum: [user, admin] }
+        status: { type: string, enum: [active, pending, suspended] }
+        email_verified: { type: boolean }
+        two_factor_enabled: { type: boolean }
+        preferences: { type: object }
+
+    UserPatchedResponse:
+      allOf:
+        - $ref: "#/components/schemas/UserPublicSafe"
+        - type: object
+          properties:
+            preferences:
+              oneOf:
+                - type: object
+                - type: string
+              description: Controller attempts to parse JSON if preferences is a string.
 
     # ---------------- CHORDS ----------------
     ChordCreate:
