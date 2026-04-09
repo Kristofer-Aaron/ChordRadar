@@ -59,7 +59,6 @@ const totp6 = Joi.string()
 /** Email verification token: randomBytes(32).toString('hex') => 64 hex chars */
 const hex64 = Joi.string()
   .length(64)
-  .hex()
   .messages({
     "string.length": "token must be 64 hex characters",
     "string.hex": "token must be a hex string",
@@ -113,7 +112,7 @@ export const registerBodySchema = Joi.object({
 
 /** ------------------ Email verification (query) ------------------ */
 export const verifyQuerySchema = Joi.object({
-  //token: hex64.required(), // controller uses req.validatedQuery.token
+  token: hex64.required(), // controller uses req.validatedQuery.token
 }).unknown(false);
 
 /** ------------------ TOTP enroll (no input) --------------------- */

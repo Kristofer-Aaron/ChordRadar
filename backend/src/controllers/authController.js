@@ -158,7 +158,7 @@ export const AuthController = {
      await TokenModel.insertUserToken(userId, emailToken, 'email_verification', now, expiresAt);
 
      //Send verification email
-      const verificationLink = `http://${process.env.HOST}:${process.env.PORT}/auth/verify?token=${emailToken}`;
+      const verificationLink = `http://${process.env.HOST}:${process.env.PORT}/auth/verify?token="${emailToken}"`;
       await sendEmail(
         email_address,
         "Verify your email",
@@ -187,7 +187,7 @@ export const AuthController = {
   },
 
   async verify(req, res) {
-    const { token } = req.validatedQuery;
+    const { token } = req.validated?.query ?? {};
     try {
       //Check for existing and valid verification token
       const rows = await TokenModel.findTokenString(token, 'email_verification');
