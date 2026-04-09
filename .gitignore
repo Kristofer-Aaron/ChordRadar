@@ -1,5 +1,6 @@
 # Keep environment variables out of version control
 .env
 .vscode
+backend/.env
 backend/.db_backups
-backend/.node_modules
+backend/node_modules
