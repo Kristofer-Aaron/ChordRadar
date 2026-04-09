@@ -113,7 +113,7 @@ export const registerBodySchema = Joi.object({
 
 /** ------------------ Email verification (query) ------------------ */
 export const verifyQuerySchema = Joi.object({
-  token: hex64.required(), // controller uses req.validatedQuery.token
+  //token: hex64.required(), // controller uses req.validatedQuery.token
 }).unknown(false);
 
 /** ------------------ TOTP enroll (no input) --------------------- */
