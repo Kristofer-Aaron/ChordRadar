@@ -13,7 +13,7 @@ export const AuthController = {
   async login(req, res) {
     try {
       const { email_address, password } = req.body || {};
-      const rememberMe = req.query?.['remember-me'] == "true" ? true : false;
+      const rememberMe = req.validated?.query?.["remember-me"] ?? false;
       if (!email_address || !password) { return res.status(400).json({ error: 'Missing credentials' }); }
 
       // Load user by email (generic error if not found)
@@ -60,7 +60,7 @@ export const AuthController = {
     const { email_address, totp_token } = req.body || {};
 
     // Match login() behavior: parse remember-me from query string
-    const rememberMe = req.query?.['remember-me'] == "true" ? true : false;
+    const rememberMe = req.validated?.query?.["remember-me"] ?? false;
 
     // Basic input guard (consistent with login())
     if (!email_address || !totp_token) {

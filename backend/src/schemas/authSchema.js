@@ -67,7 +67,12 @@ const hex64 = Joi.string()
 
 /** Optional remember-me query used by login/loginTotp: expects literal "true" or "false" */
 export const rememberMeQuerySchema = Joi.object({
-  "remember-me": Joi.string().valid("true", "false").optional(),
+  "remember-me": Joi.boolean()
+    .truthy("true").falsy("false")
+    // optional extras (if you want them):
+    .truthy("1").falsy("0")
+    .truthy("yes").falsy("no")
+    .default(false),
 }).unknown(true);
 
 /** ------------------ Auth: login with password ------------------ */

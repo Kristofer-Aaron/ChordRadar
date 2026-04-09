@@ -22,8 +22,14 @@ export const validate = (schemas = {}, options = {}) => {
             details: error.details.map((d) => d.message),
           });
         }
-        // assign validated (and normalized) value back
-        req[part] = value;
+        
+        req.validated = req.validated || {};
+        req.validated[part] = value;
+
+        // Only overwrite safe, writable parts if you really want to:
+        if (part === "body" || part === "params") {
+          req[part] = value;
+        }
       }
 
       return next();

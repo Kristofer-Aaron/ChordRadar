@@ -1,16 +1,16 @@
 import express from 'express';
 import { AuthController } from '../controllers/authController.js';
+import { validate } from '../middlewares/validation.js';
+import { loginQuerySchema, loginBodySchema, loginTotpBodySchema, loginTotpQuerySchema, registerBodySchema, verifyQuerySchema, totpConfirmBodySchema, totpDisableBodySchema } from '../schemas/authSchema.js';
 import { authenticate, requireActiveToken, requireEmailVerified, requireStatusActive } from '../middlewares/authentication.js';
-import { validate, ensureEmailUnique } from '../middlewares/validation.js';
-import { loginBodySchema, loginQuerySchema, loginTotpBodySchema, loginTotpQuerySchema, registerBodySchema, verifyQuerySchema, totpConfirmBodySchema, totpDisableBodySchema } from '../schemas/authSchema.js';
 
 const router = express.Router();
 
 // Public routes
-router.post('/login', requireEmailVerified, requireStatusActive, validate({ body: loginBodySchema, query: loginQuerySchema }), AuthController.login);
+router.post('/login', requireEmailVerified, requireStatusActive, validate({ query: loginQuerySchema, body: loginBodySchema }), AuthController.login);
 router.post('/login/totp', requireEmailVerified, requireStatusActive, validate({ body: loginTotpBodySchema, query: loginTotpQuerySchema }), AuthController.loginTotp);
 router.post('/logout', authenticate, requireActiveToken, AuthController.logout);
-router.post('/register', validate({ body: registerBodySchema }), ensureEmailUnique('email_address'), AuthController.register);
+router.post('/register', validate({ body: registerBodySchema }), /*ensureEmailUnique('email_address'),*/ AuthController.register);
 router.get('/verify', validate({ query: verifyQuerySchema }), AuthController.verify);
 
 // Protected routes
