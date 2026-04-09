@@ -1,515 +1,1290 @@
 openapi: 3.0.3
 info:
-  title: ChordRadar API
+  title: ChordRadar Node.js API
   version: 1.0.0
-  description: |
-    REST API for authentication and user management.
+  description: >
+    API documentation generated from the current codebase.
+    Includes /auth, /users, /api/chords, /api/notations, /api/tunings, and /api/grips.
 
-    Highlights:
-    - **JWT Bearer** auth, single active session policy
-    - **Idempotent** login if a valid Bearer token is provided
-    - **Email verification** flow on register and on email change (PATCH)
-    - **User PATCH** supports selective updates (email, 2FA flags, preferences, etc.)
 servers:
   - url: http://localhost:3030
-    description: Local development
+    description: Local dev server
 
 tags:
   - name: Auth
-    description: Authentication & verification
+    description: Authentication, sessions, email verification, and TOTP authentication
   - name: Users
-    description: User CRUD and partial updates
+    description: User management (admin) and self/admin user lookup
+  - name: Chords
+    description: Chord resources
+  - name: Notations
+    description: Notation resources
+  - name: Tunings
+    description: Tuning resources
+  - name: Grips
+    description: Grip resources
 
 paths:
   /auth/login:
     post:
       tags: [Auth]
-      summary: Login (idempotent with Bearer token or email+password)
-      description: |
-        - If **Authorization: Bearer &lt;jwt&gt;** is present and valid **and** an active session exists in DB,
-          returns **200 "Already logged in"** with the same token and expiry.
-        - Otherwise performs normal email+password login, enforcing **single active session** (409 if one exists).
+      summary: Login with email and password
+      description: >
+        Issues a JWT bearer token and persists it as an api_access token.
+        Optional "remember-me" query extends token lifetime.
       parameters:
-        - $ref: '#/components/parameters/AuthorizationOptional'
+        - name: remember-me
+          in: query
+          required: false
+          description: If "true", token lifetime is extended.
+          schema:
+            type: string
+            enum: ["true", "false"]
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
-            examples:
-              credentialsLogin:
-                value: { email_address: "alice@example.com", password: "Secret123!" }
+              $ref: "#/components/schemas/AuthLoginRequest"
+            example:
+              email_address: "user@example.com"
+              password: "correct horse battery staple"
       responses:
-        '200':
-          description: Already logged in OR new session issued
+        "200":
+          description: Login successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
-              examples:
-                alreadyLoggedIn:
-                  value:
-                    message: "Already logged in"
-                    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    expires_at: "2025-12-21T00:56:02.000Z"
-                    user: { id: 1, user_name: "alice", email_address: "alice@example.com", role: "user" }
-                loginSuccessful:
-                  value:
-                    message: "Login successful"
-                    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    expires_at: "2025-12-21T00:56:02.000Z"
-                    user: { id: 1, user_name: "alice", email_address: "alice@example.com", role: "user" }
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: Account not active (email not verified or suspended)
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "Account is not active. Please verify your email or contact support." }
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "User not found" }
-        '409':
-          description: User already has an active session
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error: { type: string, example: "User already logged in" }
-                  code: { type: string, example: "ALREADY_LOGGED_IN" }
-                  session:
-                    type: object
-                    properties:
-                      expires_at: { type: string, format: date-time }
+                $ref: "#/components/schemas/AuthLoginResponse"
               example:
-                error: "User already logged in"
-                code: "ALREADY_LOGGED_IN"
-                session: { expires_at: "2025-12-21T00:56:02.000Z" }
-        '500':
-          $ref: '#/components/responses/ServerError'
+                ok: true
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                renewed: false
+        "400":
+          description: Missing credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Missing credentials"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Invalid credentials"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/login/totp:
+    post:
+      tags: [Auth]
+      summary: Login with email and TOTP token
+      description: >
+        Issues a JWT bearer token when TOTP is enabled for the user and the 6-digit code is valid.
+        Optional "remember-me" query extends token lifetime.
+      parameters:
+        - name: remember-me
+          in: query
+          required: false
+          description: If "true", token lifetime is extended.
+          schema:
+            type: string
+            enum: ["true", "false"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginTotpRequest"
+            example:
+              email_address: "user@example.com"
+              totp_token: "123456"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLoginResponse"
+              example:
+                ok: true
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                renewed: true
+        "400":
+          description: Missing credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Missing credentials"
+        "401":
+          description: Invalid credentials / TOTP disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalid:
+                  value: { error: "Invalid credentials" }
+                disabled:
+                  value: { error: "TOTP login is disabled" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /auth/logout:
     post:
       tags: [Auth]
-      summary: Logout current session
-      security: [{ bearerAuth: [] }]
+      summary: Logout (invalidate current session token)
+      security:
+        - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Logout successful
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message: { type: string, example: "Logout successful" }
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/Message"
+              example:
+                message: "Logout successful"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Session not found or already logged out
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ErrorWithCode' }
-              example: { error: "Session not found or already logged out", code: "SESSION_NOT_FOUND" }
+              schema:
+                $ref: "#/components/schemas/SessionNotFound"
+              example:
+                error: "Session not found or already logged out"
+                code: "SESSION_NOT_FOUND"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /auth/register:
     post:
       tags: [Auth]
-      summary: Register a new user and send verification email
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/RegisterRequest' }
-            example:
-              user_name: "alice"
-              first_name: "Alice"
-              last_name: "Doe"
-              email_address: "alice@example.com"
-              password: "Secret123!"
-              preferences: { theme: "dark" }
-      responses:
-        '201':
-          description: Registered; verification mail sent
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message: { type: string }
-                  user: { $ref: '#/components/schemas/UserPublic' }
-              example:
-                message: "User registered successfully. Please check your email to verify your account."
-                user:
-                  id: 123
-                  user_name: "alice"
-                  first_name: "Alice"
-                  last_name: "Doe"
-                  email_address: "alice@example.com"
-                  role: "user"
-                  status: "pending"
-        '400':
-          description: Missing required fields
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { message: "Missing required fields" }
-        '409':
-          description: Email already registered
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { message: "Email already registered" }
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-  /auth/verify:
-    get:
-      tags: [Auth]
-      summary: Verify email using token; issues API access token
-      parameters:
-        - in: query
-          name: token
-          required: true
-          schema: { type: string }
-          description: Email verification token sent to the user
-      responses:
-        '200':
-          description: Email verified; API access token issued
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message: { type: string, example: "Email verified successfully" }
-                  token: { type: string, description: "API access JWT" }
-              example:
-                message: "Email verified successfully"
-                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        '400':
-          description: Invalid or expired token
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              examples:
-                invalid: { value: { message: "Invalid or expired token" } }
-                expired: { value: { message: "Token expired" } }
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-  
-    post:
-      tags: [Auth]
-      operationId: loginTotp
-      summary: Login with email + TOTP to obtain an access token
-      description: |
-        Accepts an email address and a TOTP code and returns a short-lived JWT access token.
-
-        **Preconditions enforced by middleware:**
-        - The user's email must be verified (`requireEmailVerified`).
-        - The user's status must be active (`requireStatusActive`).
-
-        **Business rules:**
-        - TOTP must be enabled for the user; otherwise, login is rejected.
-        - If an `api_access` token already exists for the user (single-session policy), login is rejected.
-
-        **Token details:**
-        - Algorithm: `HS256`
-        - Expires in: `1h` (persisted with the same expiry in the token table)
+      summary: Register a new user
+      description: >
+        Creates a user, generates an email verification token, and emails a verification link.
+        Response includes a user object (role defaults to "user", status "pending").
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginTotpRequest'
-            examples:
-              basic:
-                summary: Valid login payload
-                value:
-                  email_address: "user@example.com"
-                  totp_token: "123456"
-              eightDigits:
-                summary: 8-digit TOTP code example (if enabled in your TOTP policy)
-                value:
-                  email_address: "user@example.com"
-                  totp_token: "12345678"
+              $ref: "#/components/schemas/AuthRegisterRequest"
+            example:
+              user_name: "johnny"
+              first_name: "John"
+              last_name: "Doe"
+              email_address: "user@example.com"
+              password: "correct horse battery staple"
+              preferences: { theme: "dark" }
       responses:
-        '200':
-          description: Successful TOTP login; returns a JWT access token.
+        "201":
+          description: Registered successfully (verification required)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginTotpSuccess'
-              examples:
-                success:
-                  value:
-                    ok: true
-                    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6InVzZXIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDAzNjAwMH0.abc123DEFghiJKLmnOPqrsTUVwxyz-EXAMPLE"
-        '400':
-          description: Bad Request — validation failed or already logged in (single-session policy).
+                $ref: "#/components/schemas/AuthRegisterResponse"
+              example:
+                message: "User registered successfully. Please check your email to verify your account."
+                user:
+                  id: 100
+                  user_name: "johnny"
+                  first_name: "John"
+                  last_name: "Doe"
+                  email_address: "user@example.com"
+                  role: "user"
+                  status: "pending"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: Email already exists (from ensureEmailUnique middleware)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                validationError:
-                  summary: Missing or invalid fields
-                  value:
-                    error: "Invalid request body"
-                alreadyLoggedIn:
-                  summary: Single-session policy enforced
-                  value:
-                    error: "Already logged in"
-        '401':
-          description: Unauthorized — invalid credentials or TOTP not enabled for this user.
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Email already exists"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/verify:
+    get:
+      tags: [Auth]
+      summary: Verify email using token
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: 64-character hex token
+          schema:
+            type: string
+            minLength: 64
+            maxLength: 64
+            pattern: "^[0-9a-fA-F]{64}$"
+      responses:
+        "200":
+          description: Email verified; returns an API token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                invalidCredentials:
-                  value:
-                    error: "Invalid credentials"
-                totpDisabled:
-                  value:
-                    error: "TOTP login is disabled"
-        '403':
-          description: Forbidden — email not verified or account not active (middleware).
+                $ref: "#/components/schemas/AuthVerifyResponse"
+              example:
+                message: "Email verified successfully"
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        "400":
+          description: Invalid or expired token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/Message"
               examples:
-                emailNotVerified:
-                  value:
-                    error: "Email not verified"
-                accountNotActive:
-                  value:
-                    error: "Account is not active"
-        '500':
-          description: Internal Server Error — server config error or unexpected failure.
+                invalid:
+                  value: { message: "Invalid or expired token" }
+                expired:
+                  value: { message: "Token expired" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/totp/enroll:
+    post:
+      tags: [Auth]
+      summary: Enroll current user into TOTP (start setup)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Enrollment started; returns QR data URL and otpauth URL
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/TotpEnrollResponse"
+              example:
+                ok: true
+                qr: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+                otpauth_url: "otpauth://totp/MyApp:user@example.com?secret=BASE32&issuer=MyApp"
+                message: "Scan the QR code in your authenticator app and submit a code to confirm."
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "User not found"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/totp/qr-code:
+    get:
+      tags: [Auth]
+      summary: Get QR code PNG for currently enrolled TOTP secret
+      description: Returns a PNG image that encodes the otpauth URL.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: PNG QR image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: User not found or TOTP authentication not enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
               examples:
-                serverConfigError:
-                  value:
-                    error: "Server config error"
-                generic:
-                  value:
-                    error: "Internal Server Error"
-      x-codeSamples:
-        - lang: cURL
-          label: cURL
-          source: |
-            curl -X POST "http://localhost:3000/login/totp" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "email_address": "user@example.com",
-                "totp_token": "123456"
-              }'
-        - lang: JavaScript
-          label: fetch
-          source: |
-            fetch("http://localhost:3000/login/totp", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email_address: "user@example.com",
-                totp_token: "123456"
-              })
-            })
-            .then(r => r.json())
-            .then(console.log);
+                userNotFound:
+                  value: { error: "User not found" }
+                notEnrolled:
+                  value: { error: "TOTP authentication not enrolled for this user" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/totp/confirm:
+    post:
+      tags: [Auth]
+      summary: Confirm TOTP for current user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpConfirmRequest"
+            examples:
+              tokenField:
+                value: { token: "123456" }
+              codeField:
+                value: { code: "123456" }
+      responses:
+        "200":
+          description: Two-factor enabled; returns backup codes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TotpConfirmResponse"
+              example:
+                ok: true
+                message: "Two-factor authentication enabled."
+                backup_codes: ["A1B2C3D4", "E5F6G7H8"]
+        "400":
+          description: Missing enrollment secret or missing code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                noSecret:
+                  value: { error: "No 2FA secret to confirm" }
+                missingCode:
+                  value: { error: "Missing TOTP token" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "User not found"
+        "422":
+          description: Invalid TOTP token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Invalid TOTP token"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/totp/disable:
+    post:
+      tags: [Auth]
+      summary: Disable TOTP for current user
+      description: >
+        Disables TOTP authentication using one of:
+        - password
+        - totp_token (6 digits)
+        - backup_code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpDisableRequest"
+            examples:
+              password:
+                value: { password: "correct horse battery staple" }
+              totp:
+                value: { totp_token: "123456" }
+              backup:
+                value: { backup_code: "A1B2C3D4" }
+      responses:
+        "200":
+          description: Disabled (or already disabled)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkMessage"
+              examples:
+                disabled:
+                  value: { ok: true, message: "TOTP authentication disabled." }
+                alreadyDisabled:
+                  value: { ok: true, message: "Two-factor authentication already disabled." }
+        "400":
+          description: No verification factor provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Provide password, a valid TOTP code, or a backup code to disable TOTP authentication method"
+        "401":
+          description: Invalid credentials for provided factor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Invalid credentials"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "User not found"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /users:
     get:
       tags: [Users]
-      summary: List users
-      description: Returns all users. (Restrict to admins in production.)
-      security: [{ bearerAuth: [] }]
+      summary: List all users (admin only)
+      description: >
+        Returns all users from the database (raw rows). Admin access required.
+      security:
+        - bearerAuth: []
       responses:
-        '200':
-          description: Array of users
+        "200":
+          description: Array of users (admin view; may include sensitive fields)
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/UserPublic' }
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                items:
+                  $ref: "#/components/schemas/UserRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
     post:
       tags: [Users]
-      summary: Create a user
-      description: Typically admin-only. Validated by server schema.
-      security: [{ bearerAuth: [] }]
+      summary: Create a user (admin only)
+      description: >
+        Creates a new user. Requires admin.
+        The validation schema requires password_hash and password_changed_at.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/UserCreate' }
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+            example:
+              user_name: "johnny"
+              first_name: "John"
+              last_name: "Doe"
+              email_address: "user@example.com"
+              password_hash: "$2b$10$................................................."
+              password_changed_at: "2026-01-01T10:00:00.000Z"
+              preferences:
+                theme: "dark"
+              role: "user"
+              status: "pending"
+              email_verified: false
       responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/UserPublic' }
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          description: Email already in use
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-  /users/{id}:
-    get:
-      tags: [Users]
-      summary: Get user by ID
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-      responses:
-        '200':
-          description: The user
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/UserPublic' }
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '500':
-          $ref: '#/components/responses/ServerError'
-    put:
-      tags: [Users]
-      summary: Replace a user (full update)
-      description: Validates against the server's `userSchema`. Typically admin-only.
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UserPut' }
-      responses:
-        '200':
-          description: Updated user
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/UserPublic' }
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '500':
-          $ref: '#/components/responses/ServerError'
-    delete:
-      tags: [Users]
-      summary: Delete a user
-      description: Typically admin-only.
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-      responses:
-        '204':
-          description: Deleted (no content)
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '500':
-          $ref: '#/components/responses/ServerError'
-    patch:
-      tags: [Users]
-      summary: Partially update a user (self or admin)
-      description: |
-        Allows **admin** or the **user themself** to update selected fields:
-        - `email_address` → resets `email_verified = 0`, creates a new `email_verification` token and sends a mail
-        - `two_factor_enabled`, `two_factor_method`, `two_factor_secret`, `two_factor_backup`
-        - `user_name`, `first_name`, `last_name`, `preferences`
-        - Admin-only: `role`, `status`, `email_verified`
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UserPatch' }
-            examples:
-              toggle2FA:
-                value: { two_factor_enabled: true, two_factor_method: "google_authenticator" }
-              changeEmail:
-                value: { email_address: "newalice@example.com" }
-              adminSuspend:
-                value: { status: "suspended" }
-      responses:
-        '200':
-          description: Updated user (and possibly email re-verification info)
+        "201":
+          description: Created user (admin view; returned object includes submitted fields)
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message: { type: string, example: "User updated" }
-                  user: { $ref: '#/components/schemas/UserPublic' }
-                  email_verification_sent: { type: boolean }
-                  email_verification_expires_at: { type: string, format: date-time }
-        '400':
-          description: Invalid field or payload
+                $ref: "#/components/schemas/UserRecord"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/{selector}/{value}:
+    get:
+      tags: [Users]
+      summary: Get user by selector (self or admin)
+      description: >
+        Selector must be "id" or "email".
+        Returns a sanitized user object (does not include password_hash or 2FA secrets).
+        Requires authentication and active token.
+        Authorization allows self lookup or admin depending on middleware.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: selector
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [id, email]
+        - name: value
+          in: path
+          required: true
+          schema:
+            type: string
+          description: >
+            If selector=id, value must be digits. If selector=email, value must be a valid email.
+      responses:
+        "200":
+          description: User (sanitized view)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: Forbidden (not self nor admin)
+              schema:
+                $ref: "#/components/schemas/UserPublicSafe"
+              example:
+                id: 100
+                user_name: "johnny"
+                first_name: "John"
+                last_name: "Doe"
+                email_address: "user@example.com"
+                role: "user"
+                status: "active"
+                email_verified: true
+                two_factor_enabled: false
+        "400":
+          description: Invalid selector or value
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '404':
-          description: Target user not found
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalidId:
+                  value: { error: "Invalid user id" }
+                invalidEmail:
+                  value: { error: "Invalid email" }
+                unsupported:
+                  value: { error: "Unsupported selector: username" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: User not found
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '409':
-          description: Email already in use
+              schema:
+                $ref: "#/components/schemas/Message"
+              example:
+                message: "User not found"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/{id}:
+    patch:
+      tags: [Users]
+      summary: Patch a user (admin only)
+      description: >
+        Updates a user using a restricted set of fields (no password changes here).
+        Returns a sanitized user object and attempts to parse preferences JSON.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPatchRequest"
+            example:
+              status: "suspended"
+              email_verified: false
+              preferences:
+                theme: "light"
+      responses:
+        "200":
+          description: Updated user (sanitized view)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '500':
-          $ref: '#/components/responses/ServerError'
+              schema:
+                $ref: "#/components/schemas/UserPatchedResponse"
+              example:
+                id: 100
+                user_name: "johnny"
+                first_name: "John"
+                last_name: "Doe"
+                email_address: "user@example.com"
+                role: "user"
+                status: "suspended"
+                email_verified: false
+                two_factor_enabled: false
+                preferences:
+                  theme: "light"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "User not found"
+        "409":
+          description: Conflict (e.g., email already exists)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "A user with this email already exists"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Users]
+      summary: Delete a user (admin only)
+      description: Deletes the user and removes their tokens. Returns 204 No Content.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ------------------------ API: CHORDS ------------------------
+  /api/chords:
+    get:
+      tags: [Chords]
+      summary: List chords
+      description: >
+        Returns all chords.
+
+        Optional `fields` query parameter can be a JSON string that controls whether
+        some fields are returned as display values instead of foreign key IDs.
+        Example: {"notation":"value","tuning":"value","grip":"value"}.
+
+        If fields request values:
+          - returns notation, tuning, grip (strings)
+
+        Otherwise:
+          - returns notation_id, tuning_id, grip_id (integers)
+      parameters:
+        - name: fields
+          in: query
+          required: false
+          description: >
+            JSON string controlling returned field types.
+            Supported keys: notation, tuning, grip.
+            Use "value" to return human-readable values.
+          schema:
+            type: string
+          example: '{"notation":"value","tuning":"value","grip":"value"}'
+      responses:
+        "200":
+          description: Array of chords
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: "#/components/schemas/ChordWithValues"
+                    - $ref: "#/components/schemas/ChordWithIds"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Chords]
+      summary: Create a chord
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChordCreate"
+      responses:
+        "201":
+          description: Created (returns foreign key IDs)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChordCreated"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Duplicate chord
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/chords/user-chords:
+    get:
+      tags: [Chords]
+      summary: List chords associated with the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Array of user chords (always returns values)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChordWithValues"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/chords/{id}:
+    get:
+      tags: [Chords]
+      summary: Get chord by ID
+      parameters:
+        - $ref: "#/components/parameters/ChordId"
+        - name: fields
+          in: query
+          required: false
+          description: JSON string controlling returned field types (see GET /api/chords).
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A chord
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ChordWithValues"
+                  - $ref: "#/components/schemas/ChordWithIds"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          description: Chord not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    patch:
+      tags: [Chords]
+      summary: Update a chord (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ChordId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChordPatch"
+      responses:
+        "200":
+          description: Updated chord (returns values)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChordWithValues"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Chord not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "409":
+          description: Duplicate chord would be created by the patch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Chords]
+      summary: Delete a chord (admin deletes chord; user removes relation)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ChordId"
+      responses:
+        "204":
+          description: Deleted (no content)
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Chord not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/chords/{selector}/{selectorValue}/tuning/{tuningValue}:
+    get:
+      tags: [Chords]
+      summary: Find chords by selector and tuning
+      parameters:
+        - name: selector
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [notation, grip]
+        - name: selectorValue
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tuningValue
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 8
+            pattern: "^[a-z]+$"
+      responses:
+        "200":
+          description: Array of matching chords (possibly empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChordWithValues"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ------------------------ API: NOTATIONS ------------------------
+  /api/notations:
+    get:
+      tags: [Notations]
+      summary: List notations
+      responses:
+        "200":
+          description: Array of notations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Notation" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Notations]
+      summary: Create a notation (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotationCreate" }
+      responses:
+        "201":
+          description: Created notation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Notation" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Duplicate notation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/notations/{id}:
+    get:
+      tags: [Notations]
+      summary: Get notation by ID
+      parameters:
+        - $ref: "#/components/parameters/NotationId"
+      responses:
+        "200":
+          description: Notation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Notation" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          description: Notation not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags: [Notations]
+      summary: Update a notation (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/NotationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotationCreate" }
+      responses:
+        "200":
+          description: Updated notation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Notation" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Notation not found (controller uses error field for this case)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Duplicate notation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Notations]
+      summary: Delete a notation (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/NotationId"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Notation not found (controller uses error field for this case)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ------------------------ API: TUNINGS ------------------------
+  /api/tunings:
+    get:
+      tags: [Tunings]
+      summary: List tunings
+      responses:
+        "200":
+          description: Array of tunings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Tuning" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Tunings]
+      summary: Create a tuning (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TuningCreate" }
+      responses:
+        "201":
+          description: Created tuning
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tuning" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Duplicate tuning
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/tunings/{id}:
+    get:
+      tags: [Tunings]
+      summary: Get tuning by ID
+      parameters:
+        - $ref: "#/components/parameters/TuningId"
+      responses:
+        "200":
+          description: Tuning
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tuning" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          description: Tuning not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags: [Tunings]
+      summary: Update a tuning (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TuningId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TuningCreate" }
+      responses:
+        "200":
+          description: Updated tuning
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tuning" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Tuning not found (controller uses error field for this case)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Duplicate tuning
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Tunings]
+      summary: Delete a tuning (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TuningId"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Tuning not found (controller uses error field for this case)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ------------------------ API: GRIPS ------------------------
+  /api/grips:
+    get:
+      tags: [Grips]
+      summary: List grips
+      responses:
+        "200":
+          description: Array of grips
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Grip" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Grips]
+      summary: Create a grip (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GripCreate" }
+      responses:
+        "201":
+          description: Created grip
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Grip" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Duplicate grip
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/grips/{id}:
+    get:
+      tags: [Grips]
+      summary: Get grip by ID
+      parameters:
+        - $ref: "#/components/parameters/GripId"
+      responses:
+        "200":
+          description: Grip
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Grip" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          description: Grip not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags: [Grips]
+      summary: Update a grip (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GripId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GripCreate" }
+      responses:
+        "200":
+          description: Updated grip
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Grip" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Grip not found (controller uses error field for this case)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Duplicate grip
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Grips]
+      summary: Delete a grip (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GripId"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Grip not found (controller uses error field for this case)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          $ref: "#/components/responses/InternalError"
 
 components:
   securitySchemes:
@@ -519,183 +1294,498 @@ components:
       bearerFormat: JWT
 
   parameters:
-    AuthorizationOptional:
-      in: header
-      name: Authorization
-      required: false
-      description: Optional Bearer token to attempt idempotent login.
-      schema:
-        type: string
-        example: "Bearer eyJhbGciOi..."
     UserId:
-      in: path
       name: id
+      in: path
       required: true
-      description: Numeric user ID
-      schema: { type: integer, format: int32 }
+      description: Positive integer user id
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
 
-  responses:
-    Unauthorized:
-      description: Invalid or expired token / missing authorization
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
-          examples:
-            missing:
-              value: { error: "Authorization token missing" }
-            invalid:
-              value: { error: "Invalid or expired token" }
-    ServerError:
-      description: Internal server error
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
-          example: { error: "Internal Server Error" }
+    ChordId:
+      name: id
+      in: path
+      required: true
+      description: Positive integer chord id
+      schema: { type: integer, format: int32, minimum: 1 }
+
+    NotationId:
+      name: id
+      in: path
+      required: true
+      description: Positive integer notation id
+      schema: { type: integer, format: int32, minimum: 1 }
+
+    TuningId:
+      name: id
+      in: path
+      required: true
+      description: Positive integer tuning id
+      schema: { type: integer, format: int32, minimum: 1 }
+
+    GripId:
+      name: id
+      in: path
+      required: true
+      description: Positive integer grip id
+      schema: { type: integer, format: int32, minimum: 1 }
 
   schemas:
-    Error:
+    # ---------------- AUTH ----------------
+    AuthLoginRequest:
       type: object
-      properties:
-        error:
-          type: string
       additionalProperties: false
-    ErrorWithCode:
-      allOf:
-        - $ref: '#/components/schemas/Error'
-        - type: object
-          properties:
-            code: { type: string }
-
-    # ---------- Auth ----------
-    LoginRequest:
-      type: object
       required: [email_address, password]
       properties:
-        email_address: { type: string, format: email }
-        password: { type: string, minLength: 8 }
-    LoginResponse:
+        email_address:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 8
+          maxLength: 255
+
+    AuthLoginTotpRequest:
       type: object
+      additionalProperties: false
+      required: [email_address, totp_token]
       properties:
-        message: { type: string, example: "Login successful" }
-        token: { type: string, description: "API access JWT" }
-        expires_at: { type: string, format: date-time }
-        user:
-          $ref: '#/components/schemas/UserMinimal'
-    RegisterRequest:
+        email_address:
+          type: string
+          format: email
+          maxLength: 255
+        totp_token:
+          type: string
+          pattern: "^[0-9]{6}$"
+          description: 6-digit TOTP code
+
+    AuthLoginResponse:
       type: object
-      required: [user_name, first_name, last_name, email_address, password]
+      required: [ok, token, renewed]
       properties:
-        user_name: { type: string, maxLength: 16 }
-        first_name: { type: string, maxLength: 16 }
-        last_name: { type: string, maxLength: 32 }
-        email_address: { type: string, format: email }
-        password: { type: string, minLength: 8 }
+        ok:
+          type: boolean
+        token:
+          type: string
+          description: JWT bearer token
+        renewed:
+          type: boolean
+          description: True if a previous api_access token existed
+
+    AuthRegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [user_name, first_name, last_name, email_address, password, preferences]
+      properties:
+        user_name:
+          type: string
+          maxLength: 16
+        first_name:
+          type: string
+          maxLength: 16
+        last_name:
+          type: string
+          maxLength: 32
+        email_address:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 8
+          maxLength: 255
         preferences:
-          description: Free-form JSON object stored server-side
           type: object
-          additionalProperties: true
+          description: JSON preferences object
 
-    # ---------- Users ----------
-    Role:
-      type: string
-      enum: [user, admin]
-    Status:
-      type: string
-      enum: [active, pending, suspended]
-    TwoFactorMethod:
-      type: string
-      nullable: true
-      enum: [email, google_authenticator, microsoft_authenticator, null]
-
-    UserMinimal:
+    AuthRegisterResponse:
       type: object
+      required: [message, user]
       properties:
-        id: { type: integer, format: int32 }
-        user_name: { type: string }
-        email_address: { type: string, format: email }
-        role: { $ref: '#/components/schemas/Role' }
+        message:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserPublic"
 
     UserPublic:
       type: object
+      required: [id, user_name, first_name, last_name, email_address, role, status]
+      properties:
+        id:
+          type: integer
+          format: int32
+        user_name:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email_address:
+          type: string
+          format: email
+        role:
+          type: string
+          example: user
+        status:
+          type: string
+          example: pending
+
+    AuthVerifyResponse:
+      type: object
+      required: [message, token]
+      properties:
+        message:
+          type: string
+        token:
+          type: string
+          description: JWT bearer token
+
+    TotpEnrollResponse:
+      type: object
+      required: [ok, qr, otpauth_url, message]
+      properties:
+        ok:
+          type: boolean
+        qr:
+          type: string
+          description: Data URL for QR image (PNG)
+        otpauth_url:
+          type: string
+        message:
+          type: string
+
+    TotpConfirmRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          pattern: "^[0-9]{6}$"
+        code:
+          type: string
+          pattern: "^[0-9]{6}$"
+      minProperties: 1
+      description: Provide either token or code (6-digit TOTP)
+
+    TotpConfirmResponse:
+      type: object
+      required: [ok, message, backup_codes]
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+        backup_codes:
+          type: array
+          items:
+            type: string
+
+    TotpDisableRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        password:
+          type: string
+          minLength: 8
+          maxLength: 255
+        totp_token:
+          type: string
+          pattern: "^[0-9]{6}$"
+        backup_code:
+          type: string
+          minLength: 6
+          maxLength: 64
+      minProperties: 1
+      description: Provide password, totp_token, or backup_code
+
+    OkMessage:
+      type: object
+      required: [ok, message]
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+
+    SessionNotFound:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+
+    # ---------------- USERS ----------------
+
+    UserRecord:
+      type: object
+      description: >
+        Admin/raw user record. GET /users uses SELECT * FROM users, so this may include
+        additional DB columns beyond those listed here (password_hash, 2FA secrets, etc.).
       properties:
         id: { type: integer, format: int32 }
-        user_name: { type: string }
-        first_name: { type: string }
-        last_name: { type: string }
-        email_address: { type: string, format: email }
-        role: { $ref: '#/components/schemas/Role' }
-        status: { $ref: '#/components/schemas/Status' }
-        email_verified: { type: boolean }
-        two_factor_enabled: { type: boolean }
-        # You can expose these if needed:
-        # two_factor_method: { $ref: '#/components/schemas/TwoFactorMethod' }
-        # last_login_at: { type: string, format: date-time }
-        # account_created_at: { type: string, format: date-time }
-
-    UserCreate:
-      type: object
-      required: [user_name, first_name, last_name, email_address, password]
-      properties:
         user_name: { type: string, maxLength: 16 }
         first_name: { type: string, maxLength: 16 }
         last_name: { type: string, maxLength: 32 }
-        email_address: { type: string, format: email }
-        password: { type: string, minLength: 8 }
-        role: { $ref: '#/components/schemas/Role', default: user }
-        status: { $ref: '#/components/schemas/Status', default: pending }
+        email_address: { type: string, format: email, maxLength: 255 }
+        password_hash: { type: string, maxLength: 255, description: "Bcrypt hash" }
+        password_changed_at: { type: string, format: date-time }
+        account_created_at: { type: string, format: date-time }
+        last_login_at: { type: string, format: date-time }
         preferences:
-          type: object
-          additionalProperties: true
-
-    UserPut:
-      type: object
-      description: Full replacement payload (server validates with its own schema).
-      properties:
-        user_name: { type: string, maxLength: 16 }
-        first_name: { type: string, maxLength: 16 }
-        last_name: { type: string, maxLength: 32 }
-        email_address: { type: string, format: email }
-        password: { type: string, minLength: 8 }
-        role: { $ref: '#/components/schemas/Role' }
-        status: { $ref: '#/components/schemas/Status' }
-        preferences:
-          type: object
-          additionalProperties: true
-      additionalProperties: false
-
-    UserPatch:
-      type: object
-      description: |
-        Partial update. Only include fields you want to change.
-        - Changing `email_address` resets `email_verified` to false and triggers a new verification email.
-        - When disabling 2FA you **may** clear secrets/backup codes server-side.
-      properties:
-        user_name: { type: string }
-        first_name: { type: string }
-        last_name: { type: string }
-        email_address: { type: string, format: email }
-        preferences:
-          type: object
-          additionalProperties: true
-        two_factor_enabled:
           oneOf:
-            - { type: boolean }
-            - { type: integer, enum: [0, 1] }
-        two_factor_method: { $ref: '#/components/schemas/TwoFactorMethod' }
+            - type: object
+            - type: string
+          description: Stored as JSON text in DB; may be returned as string depending on query path.
+        role:
+          type: string
+          enum: [user, admin]
+        status:
+          type: string
+          enum: [active, pending, suspended]
+        email_verified:
+          type: boolean
+        two_factor_enabled:
+          type: boolean
+        two_factor_method:
+          type: string
+          nullable: true
         two_factor_secret:
           type: string
           nullable: true
         two_factor_backup:
-          description: JSON array of backup codes (stored as JSON)
-          oneOf:
-            - type: array
-              items: { type: string }
-            - type: string
-        # Admin-only fields:
-        role: { $ref: '#/components/schemas/Role' }
-        status: { $ref: '#/components/schemas/Status' }
-        email_verified:
-          oneOf:
-            - { type: boolean }
-            - { type: integer, enum: [0, 1] }
+          type: string
+          nullable: true
+      required: [id, user_name, first_name, last_name, email_address]
+
+    UserPublicSafe:
+      type: object
+      description: Sanitized user response (no password hash or 2FA secrets).
+      required: [id, user_name, first_name, last_name, email_address, role, status, email_verified, two_factor_enabled]
+      properties:
+        id: { type: integer, format: int32 }
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email, maxLength: 255 }
+        role: { type: string, enum: [user, admin] }
+        status: { type: string, enum: [active, pending, suspended] }
+        email_verified: { type: boolean }
+        two_factor_enabled: { type: boolean }
+
+    UserCreateRequest:
+      type: object
       additionalProperties: false
+      required:
+        - user_name
+        - first_name
+        - last_name
+        - email_address
+        - password_hash
+        - password_changed_at
+        - preferences
+      properties:
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email, maxLength: 255 }
+        password_hash:
+          type: string
+          minLength: 50
+          maxLength: 255
+          description: >
+            Password hash (bcrypt). Route uses hashPasswordIfPresent middleware, but validation expects password_hash.
+        password_changed_at: { type: string, format: date-time }
+        preferences: { type: object }
+        role: { type: string, enum: [user, admin] }
+        status: { type: string, enum: [active, pending, suspended] }
+        email_verified: { type: boolean }
+        account_created_at: { type: string, format: date-time }
+        last_login_at: { type: string, format: date-time }
+
+    UserPatchRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        user_name: { type: string, maxLength: 16 }
+        first_name: { type: string, maxLength: 16 }
+        last_name: { type: string, maxLength: 32 }
+        email_address: { type: string, format: email, maxLength: 255 }
+        role: { type: string, enum: [user, admin] }
+        status: { type: string, enum: [active, pending, suspended] }
+        email_verified: { type: boolean }
+        two_factor_enabled: { type: boolean }
+        preferences: { type: object }
+
+    UserPatchedResponse:
+      allOf:
+        - $ref: "#/components/schemas/UserPublicSafe"
+        - type: object
+          properties:
+            preferences:
+              oneOf:
+                - type: object
+                - type: string
+              description: Controller attempts to parse JSON if preferences is a string.
+
+    # ---------------- CHORDS ----------------
+    ChordCreate:
+      type: object
+      additionalProperties: false
+      required: [notation, tuning, grip]
+      properties:
+        notation:
+          type: string
+          maxLength: 16
+        tuning:
+          type: string
+          maxLength: 8
+        grip:
+          type: string
+          maxLength: 8
+
+    ChordPatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        notation: { type: string, maxLength: 16 }
+        tuning: { type: string, maxLength: 8 }
+        grip: { type: string, maxLength: 8 }
+
+    ChordWithValues:
+      type: object
+      required: [id, notation, tuning, grip]
+      properties:
+        id: { type: integer, format: int32 }
+        notation: { type: string, maxLength: 16 }
+        tuning: { type: string, maxLength: 8 }
+        grip: { type: string, maxLength: 8 }
+
+    ChordWithIds:
+      type: object
+      required: [id, notation_id, tuning_id, grip_id]
+      properties:
+        id: { type: integer, format: int32 }
+        notation_id: { type: integer, format: int32 }
+        tuning_id: { type: integer, format: int32 }
+        grip_id: { type: integer, format: int32 }
+
+    ChordCreated:
+      type: object
+      required: [id, notation_id, tuning_id, grip_id]
+      properties:
+        id: { type: integer, format: int32 }
+        notation_id: { type: integer, format: int32 }
+        tuning_id: { type: integer, format: int32 }
+        grip_id: { type: integer, format: int32 }
+
+    # -------------- NOTATIONS ---------------
+    Notation:
+      type: object
+      required: [id, value]
+      properties:
+        id: { type: integer, format: int32 }
+        value: { type: string, minLength: 1, maxLength: 16 }
+
+    NotationCreate:
+      type: object
+      additionalProperties: false
+      required: [value]
+      properties:
+        value: { type: string, minLength: 1, maxLength: 16 }
+
+    # --------------- TUNINGS ----------------
+    Tuning:
+      type: object
+      required: [id, value]
+      properties:
+        id: { type: integer, format: int32 }
+        value:
+          type: string
+          minLength: 1
+          maxLength: 8
+          description: Stored/validated as lowercase
+
+    TuningCreate:
+      type: object
+      additionalProperties: false
+      required: [value]
+      properties:
+        value: { type: string, minLength: 1, maxLength: 8 }
+
+    # ---------------- GRIPS -----------------
+    Grip:
+      type: object
+      required: [id, strings]
+      properties:
+        id: { type: integer, format: int32 }
+        strings: { type: string, minLength: 1, maxLength: 8 }
+
+    GripCreate:
+      type: object
+      additionalProperties: false
+      required: [strings]
+      properties:
+        strings: { type: string, minLength: 1, maxLength: 8 }
+
+    # ------------- GENERIC ERRORS -----------
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Message:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+  responses:
+    ValidationError:
+      description: Request validation error
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/Error"
+              - $ref: "#/components/schemas/Message"
+          examples:
+            example:
+              value:
+                message: "Invalid request"
+
+    Unauthorized:
+      description: Missing/invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Unauthorized"
+
+    Forbidden:
+      description: Authenticated but not permitted or account not eligible (e.g., email not verified/status inactive)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Forbidden"
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Internal Server Error"
