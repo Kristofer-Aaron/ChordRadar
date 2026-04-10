@@ -3,11 +3,11 @@ info:
   title: ChordRadar Node.js API
   version: 1.0.0
   description: >
-    API documentation generated from the current codebase.
+    API documentation representing the current codebase.
     Includes /auth, /users, /api/chords, /api/notations, /api/tunings, and /api/grips.
 
 servers:
-  - url: http://localhost:3030
+  - url: http://chordradar.akos.local
     description: Local dev server
 
 tags:

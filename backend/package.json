@@ -1,5 +1,5 @@
 {
-  "name": "backend",
+  "name": "ChordRadar Rest API",
   "version": "1.0.0",
   "type": "module",
   "description": "NodeJS webserver",
@@ -13,10 +13,13 @@
     "seed:chords": "node ./prisma/seeders/chordSeeder.js",
     "seed:users": "node prisma/seeders/userSeeder.js",
     "db:setup": "npm run generate && npm run migrate && npm run seed:chords",
-    "db:backup": "node src/utils/dbBackup.js",
+    "db:backup": "node ./src/utils/dbBackup.js",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
-    "test:verbose": "npm test -- --verbose"
+    "test:verbose": "npm test -- --verbose",
+    "node_modules:reset": "rm -rf node_modules package-lock.json && npm install",
+    "cache:clear": "npm cache clean --force",
+    "node_modules:update": "npm outdated && npm update"
   },
   "author": "",
   "license": "ISC",
@@ -26,22 +29,26 @@
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "github-markdown-css": "^5.9.0",
+    "github-slugger": "^2.0.0",
+    "highlight.js": "^11.11.1",
     "joi": "^18.0.1",
     "jsonwebtoken": "^9.0.2",
+    "marked": "^18.0.0",
     "mysql2": "^3.15.3",
-    "nodemailer": "^7.0.10",
+    "nodemailer": "^8.0.5",
     "otplib": "^12.0.1",
-    "qrcode": "^1.5.4",
-    "swagger-ui-express": "^5.0.1",
-    "yamljs": "^0.3.0"
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "cross-env": "^7.0.3",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.4.1",
     "jest": "^29.7.0",
-    "mysqldump": "^3.2.0",
+    "mysqldump": "^1.4.2",
     "nodemon": "^3.1.11",
-    "prisma": "^6.19.3"
+    "prisma": "^6.19.3",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
   }
 }

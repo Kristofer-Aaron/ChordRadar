@@ -5,7 +5,7 @@ import crypto from "crypto";
 import UserModel from "../models/userModel.js";
 import sendEmail from "../utils/sendEmail.js";
 import { TokenModel } from "../models/tokenModel.js";
-import { generateQrDataUrl } from "../utils/qrcode.js";
+import { generateQrDataUrl } from "../utils/qrCode.js";
 import QRCode from 'qrcode';
 import { generateTotpSecret, buildOtpAuthUrl, verifyTotp, generateBackupCodes } from "../utils/totp.js";
 

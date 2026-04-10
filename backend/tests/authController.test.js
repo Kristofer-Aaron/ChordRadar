@@ -67,6 +67,11 @@ const cryptoMock = {
   randomBytes: jest.fn(),
 };
 
+// Make jwt.sign deterministic
+jest.mock('jsonwebtoken', () => ({
+  sign: jest.fn(),
+}));
+
 // Register mocks BEFORE importing SUT
 jest.unstable_mockModule('../src/models/userModel.js', () => ({ default: UserModel }));
 jest.unstable_mockModule('../src/models/tokenModel.js', () => ({ TokenModel }));
@@ -307,46 +312,96 @@ describe('AuthController.register', () => {
 
 // ------------------ verify ------------------
 describe('AuthController.verify', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.JWT_SECRET = 'test-secret';
+    process.env.API_TOKEN_EXPIRATION = '3600';
+  });
+
   test('activates user, consumes token, issues api token (200)', async () => {
     const future = new Date(Date.now() + 60_000);
-    TokenModel.findTokenString.mockResolvedValue({ user_id: 55, expires_at: future });
-    pool.query.mockResolvedValue([{ affectedRows: 1 }]);
-    TokenModel.consumeTokenString.mockResolvedValue(true);
-    TokenModel.insertUserToken.mockResolvedValue({ id: 1 });
 
-    const req = { validatedQuery: { token: 't'.repeat(64) } };
+    TokenModel.findTokenString.mockResolvedValue({ user_id: 55, expires_at: future });
+    pool.query.mockResolvedValue([{ affectedRows: 1 }, []]); // controller doesn't check affectedRows
+    TokenModel.consumeTokenString.mockResolvedValue(true);
+
+    // Controller awaits this, but does not use return value; your model returns insertId anyway.
+    TokenModel.insertUserToken.mockResolvedValue(1);
+
+    jwt.sign.mockReturnValue('jwt.token');
+
+    // ✅ match controller: req.validated.query.token
+    const req = { validated: { query: { token: 't'.repeat(64) } } };
     const res = mockRes();
 
     await AuthController.verify(req, res);
 
+    // ✅ controller passes token string, not whole req
     expect(TokenModel.findTokenString).toHaveBeenCalledWith('t'.repeat(64), 'email_verification');
-    expect(pool.query).toHaveBeenCalled();
-    expect(TokenModel.consumeTokenString).toHaveBeenCalled();
-    expect(TokenModel.insertUserToken).toHaveBeenCalledWith(
-      55, 'jwt.token', 'api_access', expect.any(Date), expect.any(Date)
+
+    // ✅ controller updates user
+    expect(pool.query).toHaveBeenCalledWith(
+      `UPDATE users SET email_verified = 1, status = 'active' WHERE id = ?`,
+      [55]
     );
-    expect(res.json).toHaveBeenCalledWith({ message: 'Email verified successfully', token: 'jwt.token' });
+
+    // ✅ controller consumes token with args
+    expect(TokenModel.consumeTokenString).toHaveBeenCalledWith('t'.repeat(64), 'email_verification');
+
+    // ✅ token created via jwt.sign
+    expect(jwt.sign).toHaveBeenCalledWith(
+      { id: 55, role: 'user' },
+      'test-secret',
+      { expiresIn: '3600s' }
+    );
+
+    // ✅ controller stores api_access token
+    expect(TokenModel.insertUserToken).toHaveBeenCalledWith(
+      55,
+      'jwt.token',
+      'api_access',
+      expect.any(Date),
+      expect.any(Date)
+    );
+
+    // ✅ success response is res.json (no status(200))
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'Email verified successfully',
+      token: 'jwt.token',
+    });
   });
 
   test('400 on invalid/expired token; 500 on error', async () => {
     const res = mockRes();
 
-    // not found
+    // invalid / not found
     TokenModel.findTokenString.mockResolvedValue(null);
-    await AuthController.verify({ validatedQuery: { token: 'x' } }, res);
+
+    await AuthController.verify({ validated: { query: { token: 'x' } } }, res);
+
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid or expired token' });
 
     // expired
     jest.clearAllMocks();
-    TokenModel.findTokenString.mockResolvedValue({ user_id: 1, expires_at: new Date(Date.now() - 1000) });
-    await AuthController.verify({ validatedQuery: { token: 'x' } }, res);
-    expect(res.status).toHaveBeenCalledWith(400);
+    TokenModel.findTokenString.mockResolvedValue({
+      user_id: 1,
+      expires_at: new Date(Date.now() - 1000),
+    });
 
-    // 500
+    await AuthController.verify({ validated: { query: { token: 'x' } } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Token expired' });
+
+    // internal error
     jest.clearAllMocks();
     TokenModel.findTokenString.mockRejectedValue(new Error('boom'));
-    await AuthController.verify({ validatedQuery: { token: 'x' } }, res);
+
+    await AuthController.verify({ validated: { query: { token: 'x' } } }, res);
+
     expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'boom' });
   });
 });
 

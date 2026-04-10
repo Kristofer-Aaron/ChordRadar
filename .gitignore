@@ -1,8 +1,7 @@
 # Keep environment variables out of version control
 .vscode
 backend/.env
-backend/.db_backups
-backend/node_modules
-backend/.claude
-backend/node_modules
+backend/.db_backups/*
+backend/node_modules/*
+backend/.claude/*
 backend/CLAUDE.md

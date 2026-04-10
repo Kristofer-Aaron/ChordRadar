@@ -3,9 +3,9 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import bodyParser from 'body-parser';
 import swaggerUi from "swagger-ui-express";
 import YAML from "yamljs";
+import registerReadmeRoute from "./routes/readme.route.js";
 
 import chordRoutes from './routes/chordRoutes.js';
 import notationRoutes from './routes/notationRoutes.js';
@@ -13,10 +13,10 @@ import tuningRoutes from './routes/tuningRoutes.js';
 import gripRoutes from './routes/gripRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import { register } from "node:module";
 
 const app = express();
 const openapiSpec = YAML.load("./docs/openapi.yaml");
-
 
 const allowedOrigins = [
     'http://127.0.01',
@@ -41,6 +41,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
+registerReadmeRoute(app);
 
 app.use('/api/chords', chordRoutes);
 app.use('/api/notations', notationRoutes);
