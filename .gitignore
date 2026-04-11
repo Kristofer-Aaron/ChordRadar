@@ -14,6 +14,9 @@ node_modules/
 # Database Backups
 backend/.db_backups/
 
+# Agent Configuration
+backend/.agent/
+
 # Test Coverage Reports
 coverage/
 .nyc_output/
