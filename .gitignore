@@ -1,7 +1,37 @@
-# Keep environment variables out of version control
-.vscode
-backend/.env
-backend/.db_backups/*
-backend/node_modules/*
-backend/.claude/*
-backend/CLAUDE.md
+# Dependencies
+node_modules/
+.npm/
+
+# Prisma Generated Client
+.prisma/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# Database Backups
+backend/.db_backups/
+
+# Test Coverage Reports
+coverage/
+.nyc_output/
+
+# IDE & Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.code-workspace
+
+# OS-Specific Files
+.DS_Store
+.windows-build-helper/
+Thumbs.db
+
+# npm Debug Logs
+npm-debug.log*
+npm-error.log*
+yarn-error.log*

@@ -1,11 +1,11 @@
-import { authenticator } from 'otplib';
+import { generateSecret, generateURI, verify } from 'otplib';
 import crypto from 'crypto';
 
 /**
  * Generate a secret for a user, which they will store in their authenticator app.
  */
 export function generateTotpSecret() {
-  return authenticator.generateSecret(); // base32
+  return generateSecret(); // base32
 }
 
 /**
@@ -14,14 +14,14 @@ export function generateTotpSecret() {
  * label: usually email or username (displayed in the app)
  */
 export function buildOtpAuthUrl({ secret, label, issuer }) {
-  return authenticator.keyuri(label, issuer, secret);
+  return generateURI(label, issuer, secret);
 }
 
 /**
  * Verify a 6-digit token against the stored secret.
  */
 export function verifyTotp({ token, secret }) {
-  return authenticator.verify({ token, secret });
+  return verify({ token, secret });
 }
 
 

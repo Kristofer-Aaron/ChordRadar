@@ -1,5 +1,5 @@
 {
-  "name": "ChordRadar Rest API",
+  "name": "chordradar-rest-api",
   "version": "1.0.0",
   "type": "module",
   "description": "NodeJS webserver",
@@ -12,10 +12,10 @@
     "deploy": "npx prisma migrate deploy",
     "seed:chords": "node ./prisma/seeders/chordSeeder.js",
     "seed:users": "node prisma/seeders/userSeeder.js",
-    "db:setup": "npm run generate && npm run migrate && npm run seed:chords",
+    "db:setup": "npx prisma migrate dev && npm run seed:users && npm run seed:chords",
     "db:backup": "node ./src/utils/dbBackup.js",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test": "cross-env 'NODE_OPTIONS=--experimental-vm-modules --no-warnings' jest",
+    "test:watch": "npm test -- --watch",
     "test:verbose": "npm test -- --verbose",
     "node_modules:reset": "rm -rf node_modules package-lock.json && npm install",
     "cache:clear": "npm cache clean --force",
@@ -24,7 +24,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.18.0",
+    "@prisma/client": "^6.9.13",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
@@ -37,7 +37,7 @@
     "marked": "^18.0.0",
     "mysql2": "^3.15.3",
     "nodemailer": "^8.0.5",
-    "otplib": "^12.0.1",
+    "otplib": "^13.4.0",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
@@ -47,7 +47,7 @@
     "jest": "^29.7.0",
     "mysqldump": "^1.4.2",
     "nodemon": "^3.1.11",
-    "prisma": "^6.19.3",
+    "prisma": "^6.9.13",
     "swagger-ui-express": "^5.0.1",
     "yamljs": "^0.3.0"
   }

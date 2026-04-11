@@ -83,7 +83,7 @@ jest.unstable_mockModule('../src/utils/totp.js', () => ({
   generateBackupCodes: totp.generateBackupCodes,
 }));
 jest.unstable_mockModule('qrcode', () => ({ default: QRCode }));
-jest.unstable_mockModule('../src/utils/qrcode.js', () => ({
+jest.unstable_mockModule('../src/utils/qrCode.js', () => ({
   generateQrDataUrl: qrcodeUtils.generateQrDataUrl,
 }));
 
