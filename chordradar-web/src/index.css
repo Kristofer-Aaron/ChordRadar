@@ -1,0 +1,158 @@
+
+/**
+ * Global stylesheet for ChordRadar web app.
+ * Defines the design system variables (colors, radii, shadows, fonts),
+ * typography, theme-aware CSS custom properties, and base element styles.
+ * Light/dark mode is automatically set via prefers-color-scheme media query.
+ */
+
+:root {
+  --text: #fff;
+  --text-h: #08060d;
+  --bg: transparent;
+  --app-shell-overlay: rgba(255, 255, 255, 0.42);
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
+  --accent: #fff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  /* Design System: Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 1000px;
+
+  /* Design System: Colors - Cyan Accent */
+  --color-cyan-primary: rgba(94, 220, 246, 0.98);
+  --color-cyan-secondary: rgba(43, 189, 224, 0.98);
+  --color-cyan-accent: rgba(94, 220, 246, 0.92);
+  --color-cyan-text-on-accent: rgba(4, 19, 27, 0.98);
+  --color-cyan-shadow: rgba(57, 186, 217, 0.24);
+  --color-cyan-border-accent: rgba(13, 56, 67, 0.42);
+
+  /* Design System: Colors - Borders & Dividers (Light) */
+  --color-border-light-10: rgba(255, 255, 255, 0.1);
+  --color-border-light-20: rgba(255, 255, 255, 0.2);
+  --color-border-light-22: rgba(255, 255, 255, 0.22);
+  --color-border-light-26: rgba(255, 255, 255, 0.26);
+  --color-border-light-30: rgba(255, 255, 255, 0.3);
+
+  /* Design System: Colors - Backgrounds & Overlays (Dark) */
+  --color-bg-overlay-20: rgba(0, 0, 0, 0.2);
+  --color-bg-overlay-22: rgba(0, 0, 0, 0.22);
+  --color-bg-overlay-26: rgba(0, 0, 0, 0.26);
+  --color-bg-overlay-28: rgba(0, 0, 0, 0.28);
+  --color-bg-overlay-30: rgba(0, 0, 0, 0.3);
+  --color-bg-overlay-35: rgba(0, 0, 0, 0.35);
+
+  /* Design System: Colors - Text */
+  --color-text-light: rgba(237, 243, 250, 0.9);
+
+  /* Design System: Shadows */
+  --shadow-sm: 0 0.35rem 0.8rem rgba(57, 186, 217, 0.24);
+  --shadow-md: 0 0.75rem 2rem rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 0.7rem 1.8rem rgba(0, 0, 0, 0.24);
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: transparent;
+    --app-shell-overlay: rgba(0, 0, 0, 0.1);
+    --border: #2e303a;
+    --code-bg: #1f2028;
+    --accent: #fff;
+    --accent-bg: rgba(192, 132, 252, 0.15);
+    --accent-border: rgba(192, 132, 252, 0.5);
+    --social-bg: rgba(47, 48, 58, 0.5);
+    --shadow:
+      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  }
+
+  #social .button-icon {
+    filter: invert(1) brightness(2);
+  }
+}
+
+#root {
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: var(--app-shell-overlay);
+}
+
+body {
+  margin: 0;
+  background: transparent;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  margin: 32px 0;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+}
+h2 {
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  margin: 0 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 20px;
+  }
+}
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: var(--radius-sm);
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}

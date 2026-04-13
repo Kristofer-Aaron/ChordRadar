@@ -15,7 +15,6 @@ $scripts = [
     "note-utilities.js",
     "generate-fretboard.js",
     "chord-to-grips.js",
-    "explore.js",
     "sound-generator.js"
 ];
 
@@ -35,46 +34,7 @@ ob_start();
   <!-- ROOT NOTE -->
   <div class="mb-3">
     <label class="form-label">Root Note</label>
-    <div class="btn-group flex-wrap w-100">
-
-      <!-- Notes -->
-      <input type="radio" class="btn-check" name="rootNote" id="rootC" value="C">
-      <label class="btn btn-outline-secondary" for="rootC">C</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootCsharp" value="C#">
-      <label class="btn btn-outline-secondary" for="rootCsharp">C#</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootD" value="D">
-      <label class="btn btn-outline-secondary" for="rootD">D</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootDsharp" value="D#">
-      <label class="btn btn-outline-secondary" for="rootDsharp">D#</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootE" value="E">
-      <label class="btn btn-outline-secondary" for="rootE">E</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootF" value="F">
-      <label class="btn btn-outline-secondary" for="rootF">F</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootFsharp" value="F#">
-      <label class="btn btn-outline-secondary" for="rootFsharp">F#</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootG" value="G">
-      <label class="btn btn-outline-secondary" for="rootG">G</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootGsharp" value="G#">
-      <label class="btn btn-outline-secondary" for="rootGsharp">G#</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootA" value="A">
-      <label class="btn btn-outline-secondary" for="rootA">A</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootAsharp" value="A#">
-      <label class="btn btn-outline-secondary" for="rootAsharp">A#</label>
-
-      <input type="radio" class="btn-check" name="rootNote" id="rootB" value="B">
-      <label class="btn btn-outline-secondary" for="rootB">B</label>
-
-    </div>
+    <div id="rootNoteGroup" class="btn-group flex-wrap w-100"></div>
   </div>
 
   <!-- CHORD TYPE -->
@@ -82,7 +42,7 @@ ob_start();
     <label class="form-label">Chord Type</label>
     <div class="btn-group flex-wrap w-100">
 
-      <input type="radio" class="btn-check" name="tritone" id="triMaj" value="maj">
+      <input type="radio" class="btn-check" name="tritone" id="triMaj" value="maj" checked>
       <label class="btn btn-outline-secondary" for="triMaj">Maj</label>
 
       <input type="radio" class="btn-check" name="tritone" id="triMin" value="min">
@@ -129,34 +89,7 @@ ob_start();
   <!-- SLASH NOTE -->
   <div class="mb-3">
     <label class="form-label">Slash Note</label>
-    <div class="btn-group flex-wrap w-100">
-
-      <input type="radio" class="btn-check" name="slashNote" id="slashNone" value="" checked>
-      <label class="btn btn-outline-secondary" for="slashNone">None</label>
-
-      <!-- reuse notes -->
-      <input type="radio" class="btn-check" name="slashNote" id="slashC" value="C">
-      <label class="btn btn-outline-secondary" for="slashC">C</label>
-
-      <input type="radio" class="btn-check" name="slashNote" id="slashD" value="D">
-      <label class="btn btn-outline-secondary" for="slashD">D</label>
-
-      <input type="radio" class="btn-check" name="slashNote" id="slashE" value="E">
-      <label class="btn btn-outline-secondary" for="slashE">E</label>
-
-      <input type="radio" class="btn-check" name="slashNote" id="slashF" value="F">
-      <label class="btn btn-outline-secondary" for="slashF">F</label>
-
-      <input type="radio" class="btn-check" name="slashNote" id="slashG" value="G">
-      <label class="btn btn-outline-secondary" for="slashG">G</label>
-
-      <input type="radio" class="btn-check" name="slashNote" id="slashA" value="A">
-      <label class="btn btn-outline-secondary" for="slashA">A</label>
-
-      <input type="radio" class="btn-check" name="slashNote" id="slashB" value="B">
-      <label class="btn btn-outline-secondary" for="slashB">B</label>
-
-    </div>
+    <div id="slashNoteGroup" class="btn-group flex-wrap w-100"></div>
   </div>
 
   <!-- GRIP SPAN -->
@@ -217,7 +150,7 @@ ob_start();
 
           <div class="mb-3">
             <label class="form-label">Tuning</label>
-            <select class="form-select">
+            <select class="form-select" id="tuningSelect">
               <option>Standard</option>
               <option>Drop D</option>
               <option>Open G</option>
@@ -239,11 +172,11 @@ ob_start();
           <div class="mb-3">
             <label class="form-label">Note Display</label>
             <div class="form-check">
-              <input class="form-check-input" type="radio" name="noteDisplay" checked>
+              <input class="form-check-input" type="radio" name="noteDisplay" id="noteDisplaySharp" value="sharp" checked>
               <label class="form-check-label">Sharp (#)</label>
             </div>
             <div class="form-check">
-              <input class="form-check-input" type="radio" name="noteDisplay">
+              <input class="form-check-input" type="radio" name="noteDisplay" id="noteDisplayFlat" value="flat">
               <label class="form-check-label">Flat (b)</label>
             </div>
           </div>
@@ -289,11 +222,100 @@ ob_start();
 
 <script>
 
+  function createId(prefix, noteName) {
+    return `${prefix}${noteName.replace('#', 'Sharp').replace('b', 'Flat')}`;
+  }
+
+  function isSharpDisplaySelected() {
+    const selected = document.querySelector('input[name="noteDisplay"]:checked');
+    return !selected || selected.value === 'sharp';
+  }
+
+  function getDisplayNotes() {
+    return isSharpDisplaySelected()
+      ? Object.keys(NoteUtilities.sharpNoteMap)
+      : Object.keys(NoteUtilities.flatNoteMap);
+  }
+
+  function renderNoteSelectorGroup(containerId, radioName, idPrefix, includeNone = false) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const previous = document.querySelector(`input[name="${radioName}"]:checked`)?.value ?? '';
+    const notes = getDisplayNotes();
+    let html = '';
+
+    if (includeNone) {
+      const noneId = `${idPrefix}None`;
+      html += `
+        <input type="radio" class="btn-check" name="${radioName}" id="${noneId}" value="" ${previous === '' ? 'checked' : ''}>
+        <label class="btn btn-outline-secondary" for="${noneId}">None</label>
+      `;
+    }
+
+    notes.forEach((labelNote, index) => {
+      const midi = NoteUtilities.getMidiNote(labelNote, 3);
+      const sharpValue = NoteUtilities.getNoteName(midi, true);
+      const radioId = createId(idPrefix, labelNote);
+      const shouldCheck = previous
+        ? previous === sharpValue
+        : (!includeNone && index === 0);
+
+      html += `
+        <input type="radio" class="btn-check" name="${radioName}" id="${radioId}" value="${sharpValue}" ${shouldCheck ? 'checked' : ''}>
+        <label class="btn btn-outline-secondary" for="${radioId}">${labelNote}</label>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function renderNoteSelectors() {
+    renderNoteSelectorGroup('rootNoteGroup', 'rootNote', 'root', false);
+    renderNoteSelectorGroup('slashNoteGroup', 'slashNote', 'slash', true);
+  }
+
+  function getSelectedValue(name, fallback = '') {
+    return document.querySelector(`input[name="${name}"]:checked`)?.value ?? fallback;
+  }
+
+  function applyTuningPreset() {
+    const tuningSelect = document.getElementById('tuningSelect');
+    const preset = tuningSelect?.value ?? 'Standard';
+
+    const presets = {
+      Standard: ['E', 'A', 'D', 'G', 'B', 'E'],
+      'Drop D': ['D', 'A', 'D', 'G', 'B', 'E'],
+      'Open G': ['D', 'G', 'D', 'G', 'B', 'D']
+    };
+
+    const selectedTuning = presets[preset] || presets.Standard;
+    const octaves = [2, 2, 3, 3, 3, 4];
+    NoteUtilities.tuning = selectedTuning.map((note, index) => NoteUtilities.getMidiNote(note, octaves[index]));
+
+    if (typeof generateFretboard === 'function') {
+      generateFretboard(6, 24);
+    }
+  }
+
+  function getCurrentTuningNames() {
+    return [...NoteUtilities.tuning].map(midi => NoteUtilities.getNoteName(midi, true));
+  }
+
+  renderNoteSelectors();
+  applyTuningPreset();
+
+  document.querySelectorAll('input[name="noteDisplay"]').forEach(input => {
+    input.addEventListener('change', renderNoteSelectors);
+  });
+
+  document.getElementById('tuningSelect')?.addEventListener('change', applyTuningPreset);
+
     function ExploreChord() {
-        const rootNote = document.getElementById('rootNoteSelect').value;
-        const tritone = document.getElementById('tritoneSelect').value;
-        const add = document.getElementById('addSelect').value;
-        const slashNote = document.getElementById('slashNoteSelect').value;
+    const rootNote = getSelectedValue('rootNote', 'C');
+    const tritone = getSelectedValue('tritone', 'maj');
+    const add = getSelectedValue('add', '');
+    const slashNote = getSelectedValue('slashNote', '');
         const gripSpan = document.getElementById('gripSpanInput').value;
 
         json = {
@@ -302,10 +324,10 @@ ob_start();
             add:add,
             slash:slashNote,
             gripSpan:gripSpan,
-            tuning: ["E", "A", "D", "G", "B", "E"]
+      tuning: getCurrentTuningNames()
         };
 
-        grips = JSON.parse(ChordToGrips(JSON.stringify(json)));
+        grips = JSON.parse( ChordToGrips(JSON.stringify(json)) );
         renderPossibleGrips(grips);
     }
 

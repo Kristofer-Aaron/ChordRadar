@@ -14,7 +14,7 @@ function MidisToChord(midiNotes)     //main function
 {
     const midiUniqueNotes = getMidiUniqueNotes(midiNotes);
 
-    const lowNote = midiNotes[0];
+    const lowNote = Math.min(...midiNotes);
 
     const chords = [];
 
@@ -25,7 +25,7 @@ function MidisToChord(midiNotes)     //main function
         const temp = MidiToRelativeDistance(inversion, lowNote);
         const relativeDistance = temp[0];
         const lowNoteRelativeDistance = temp[1];
-        const tritone = DetermineTritone(relativeDistance);
+        const tritone = DetermineChordQuality(relativeDistance);
         const slashNote = DetermineSlashNote(rootNote, lowNote);
         if(slashNote != "")
         {
@@ -60,7 +60,7 @@ function getMidiUniqueNotes(midiNotes)
 function MidiToRelativeDistance(midiNotes, lowNote)    
 {
     let lowNoteRelativeDistance = 0;
-    const relativeDistance = midiNotes;
+    const relativeDistance = [...midiNotes];
     const rootOffset = relativeDistance[0]-1;
     for (let i = 0; i < relativeDistance.length; i++)
     {
@@ -88,7 +88,7 @@ function MidiToRelativeDistance(midiNotes, lowNote)
 }
 
 
-function DetermineTritone(relativeDistance)       
+function DetermineChordQuality(relativeDistance)       
 {
     let bestKey = "";
     let bestScore = -1;

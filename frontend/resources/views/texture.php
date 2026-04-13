@@ -45,15 +45,24 @@
         }
     
         .thingy {
-            height: 300px;
             width: 300px;
             margin: 50px;
+            padding: 5px;
+            border: 1px solid rgba(0,0,0,0.3);
+            border-radius: 10px;
+            color: rgba(0,0,0,0.0);
+            text-shadow: 0 0 0.05rem rgba(0,0,0,0.4);
+            box-shadow: inset 0 -0.125rem .25rem rgba(0,0,0,0.2),
+                        0 1rem 3rem rgba(0,0,0,0.175);
+            font-size: 24px;
         }
     </style>
 </head>
 <body style="margin: 0;">
     <div class="suede-bg" style="width: 100vw; height: 200vh;">
-        <div class="thingy shadow border border-dark-subtle rounded suede-bg"></div>
+        <div class="thingy" style="background-color: rgba(100,160,255,0.3);">
+            Lorem ipsum dolor sit amet, consectetur adipisicing elit. Itaque expedita exercitationem atque obcaecati a quae hic cum eveniet ad ullam tenetur, error, dicta voluptatibus perferendis magnam architecto quod incidunt aperiam?
+        </div>
     </div>
 
 <script>
@@ -76,7 +85,7 @@ function createSuedeTexture(container) {
 
         for (let i = 0; i < img.data.length; i += 4) {
 
-            const grain = 100 + Math.random() * 30;
+            const grain = 40 + Math.random() * 10;
 
             img.data[i] = grain + 10;
             img.data[i+1] = grain + 5;

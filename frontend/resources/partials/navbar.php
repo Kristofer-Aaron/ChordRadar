@@ -37,6 +37,9 @@ $showGuitarSettings = $navbarOptions['showGuitarSettingsButton'] ?? $isLoggedIn;
                 <li>
                     <a class="nav-link" href="<?= route('guitar-chords/explore') ?>">Explore Chords</a>
                 </li>
+                <li>
+                    <a class="nav-link" href="<?= route('suede-texture-demo') ?>">Texture Demo</a>
+                </li>
             </ul>
         </div>
 
