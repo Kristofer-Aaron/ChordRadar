@@ -14,14 +14,31 @@ export function generateTotpSecret() {
  * label: usually email or username (displayed in the app)
  */
 export function buildOtpAuthUrl({ secret, label, issuer }) {
-  return generateURI(label, issuer, secret);
+  return generateURI({
+    type: 'totp',
+    label,
+    issuer,
+    secret,
+  });
 }
 
 /**
  * Verify a 6-digit token against the stored secret.
  */
 export function verifyTotp({ token, secret }) {
-  return verify({ token, secret });
+  const code = String(token ?? '').trim();
+  if (!/^\d{6}$/.test(code) || !secret) return Promise.resolve(false);
+
+  // otplib can return either a boolean or an object like { valid: boolean }.
+  return Promise.resolve(verify({ token: code, secret }))
+    .then((result) => {
+      if (typeof result === 'boolean') return result;
+      if (result && typeof result === 'object' && 'valid' in result) {
+        return Boolean(result.valid);
+      }
+      return false;
+    })
+    .catch(() => false);
 }
 
 

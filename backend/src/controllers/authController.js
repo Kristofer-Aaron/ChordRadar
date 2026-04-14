@@ -75,12 +75,12 @@ export const AuthController = {
     if (!user) { return res.status(401).json({ error: 'Invalid credentials' }); }
 
     // Ensure TOTP is enabled for this account
-    if (!user.two_factor_enabled) {
+    if (!user.totp_enabled) {
       return res.status(401).json({ error: 'TOTP login is disabled' });
     }
 
     // Verify TOTP against stored Base32 secret
-    const isValid = verifyTotp({ token: code, secret: user.two_factor_secret });
+    const isValid = await verifyTotp({ token: code, secret: user.totp_secret });
     if (!isValid) { return res.status(401).json({ error: 'Invalid credentials' }); }
 
     // JWT configuration guard
@@ -158,7 +158,7 @@ export const AuthController = {
      await TokenModel.insertUserToken(userId, emailToken, 'email_verification', now, expiresAt);
 
      //Send verification email
-      const verificationLink = `http://${process.env.HOST}:${process.env.PORT}/auth/verify?token="${emailToken}"`;
+      const verificationLink = `http://${process.env.HOST}:${process.env.PORT}/auth/verify?token=${emailToken}`;
       await sendEmail(
         email_address,
         "Verify your email",
@@ -225,7 +225,7 @@ async totpEnroll(req, res) {
     const targetId = String(authUser.id);
 
     // Fetch current user
-    const user = await UserModel.findById(targetId);
+    const user = await UserModel.findByAccessToken(req.headers.authorization?.split(" ")[1]);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -233,7 +233,7 @@ async totpEnroll(req, res) {
     // Generate TOTP secret + otpauth URL + QR
     const secret = generateTotpSecret();
     const issuer = process.env.APP_NAME || 'MyApp';
-    const label = user.email_address || user.user_name || String(user.id); // prefer email if present
+    const label = user.email_address || user.user_name || `user-${targetId}`;
     const otpauthUrl = buildOtpAuthUrl({ secret, label, issuer });
     const qrDataUrl = await generateQrDataUrl(otpauthUrl);
 
@@ -266,7 +266,7 @@ async getQrPng(req, res) {
       }
 
       // The QR encodes the TOTP secret; only generate if a secret exists
-      const secret = user.two_factor_secret;
+      const secret = user.totp_secret;
       if (!secret) {
         // You can return 404, or 409 (Conflict) if you want to signal "enrollment not started"
         return res.status(404).json({ error: '2FA not enrolled for this user' });
@@ -314,7 +314,7 @@ async totpConfirm(req, res) {
     }
 
     // Ensure secret exists (enrollment was started)
-    const secret = user.two_factor_secret;
+    const secret = user.totp_secret;
     if (!secret) {
       return res.status(400).json({ error: 'No 2FA secret to confirm' });
     }
@@ -325,7 +325,7 @@ async totpConfirm(req, res) {
       return res.status(400).json({ error: 'Missing 2FA code' });
     }
 
-    const ok = verifyTotp({ token: String(code), secret });
+    const ok = await verifyTotp({ token: String(code), secret });
     if (!ok) {
       return res.status(422).json({ error: 'Invalid TOTP token' });
     }
@@ -365,7 +365,7 @@ async totpDisable(req, res) {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     // Idempotent behavior: If already disabled, return success
-    if (!user.two_factor_enabled && !user.two_factor_secret) {
+    if (!user.totp_enabled && !user.totp_secret) {
       return res.status(200).json({ ok: true, message: 'Two-factor authentication already disabled.' });
     }
 
@@ -386,7 +386,7 @@ async totpDisable(req, res) {
     if (!verified && typeof totp_token === 'string' && totp_token.trim().length > 0) {
       const code = totp_token.trim();
       // Use your existing helper or otplib/speakeasy under the hood
-      const ok = verifyTotp({ token: code, secret: user.two_factor_secret });
+      const ok = await verifyTotp({ token: code, secret: user.totp_secret });
       if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
       verified = true;
     }
@@ -394,7 +394,7 @@ async totpDisable(req, res) {
     // 3) Verify via backup code (consume on success)
     if (!verified && typeof backup_code === 'string' && backup_code.trim().length > 0) {
       const provided = backup_code.trim();
-      const backups = JSON.parse(user.two_factor_backup || '[]');
+      const backups = JSON.parse(user.totp_backup || '[]');
       const ok = await Promise.all(backups.map(backup => bcrypt.compare(provided, backup)));
       if (ok.findIndex(Boolean) === -1) {
         return res.status(401).json({ error: 'Invalid credentials' });

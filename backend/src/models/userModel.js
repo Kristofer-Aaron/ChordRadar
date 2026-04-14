@@ -113,7 +113,7 @@ async patch(id, data = {}) {
 	
 async updateTwoFactorSecret(id, secret) {
     const [res] = await pool.query(
-      `UPDATE users SET two_factor_secret = ?, two_factor_method = 'totp'
+      `UPDATE users SET totp_secret = ?
        WHERE id = ?`,
       [secret, id]
     );
@@ -122,7 +122,7 @@ async updateTwoFactorSecret(id, secret) {
 
   async enableTwoFactor(id) {
     const [res] = await pool.query(
-      `UPDATE users SET two_factor_enabled = 1 WHERE id = ?`,
+      `UPDATE users SET totp_enabled = 1 WHERE id = ?`,
       [id]
     );
     return res.affectedRows === 1;
@@ -131,7 +131,7 @@ async updateTwoFactorSecret(id, secret) {
   async disableTwoFactor(id) {
     const [res] = await pool.query(
       `UPDATE users
-       SET two_factor_enabled = 0, two_factor_method = NULL, two_factor_secret = NULL, two_factor_backup = NULL
+       SET totp_enabled = 0, totp_secret = NULL, totp_backup = NULL
        WHERE id = ?`,
       [id]
     );
@@ -140,7 +140,7 @@ async updateTwoFactorSecret(id, secret) {
 
   async setBackupCodes(id, codesJsonString) {
     const [res] = await pool.query(
-      `UPDATE users SET two_factor_backup = ?
+      `UPDATE users SET totp_backup = ?
        WHERE id = ?`,
       [codesJsonString, id]
     );

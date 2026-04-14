@@ -20,7 +20,7 @@ async function main() {
       where: {
         OR: [
           { email_address: u.email_address },
-          { user_name: u.user_name },
+          { user_name: u.user_name }
         ],
       },
       select: { id: true },
@@ -36,10 +36,8 @@ async function main() {
       email_verified: true,
       password_hash,
       password_changed_at: new Date(),
-      two_factor_enabled: false,
-      two_factor_method: null,
-      two_factor_secret: null,
-      two_factor_backup: Prisma.DbNull, // SQL NULL in the database for JSON-mapped column
+      totp_secret: null,
+      totp_backup: Prisma.DbNull, // SQL NULL in the database for JSON-mapped column
       role: u.role ?? "user",
       status: u.status ?? "active",
       preferences: u.preferences ?? { theme: "dark", notifications: true },
