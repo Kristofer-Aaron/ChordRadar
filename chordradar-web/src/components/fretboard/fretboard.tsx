@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useMemo, useRef } from 'react';
-import { NoteUtilities } from '../../utils';
+import { NoteUtilities } from '../../utils/noteUtilities';
 import './fretboard.css';
 
 type FretboardProps = {

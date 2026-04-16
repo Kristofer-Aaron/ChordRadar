@@ -1,26 +1,67 @@
-/* Base styles */
 .navbar {
+    position: fixed;
+    margin-top: 10px;
+    top: 0;
+    left: 0;
     width: 100%;
-    margin: 0 auto;
-    position: sticky;
-    
-    background: rgba(0,0,0,0.28);
+    display: flex;
+    justify-content: center;
 
-    border-bottom: 2px solid rgba(255,255,255,0.1);
-    box-shadow: 0 0.4rem 1rem rgba(0,0,0,0.4);
+    transform: translateY(0);
+    transition: transform 0.3s ease,
+                opacity 0.3s ease,
+                backdrop-filter 0.3s ease;
+}
+
+.navbar.collapsed {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.navbar-collapse-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 60px;
+    height: 60px;
 }
 
 .navbar-container {
-    margin: 0 auto;
-    padding: 0 1rem;
-    height: 60px;
-
-    color: rgba(0,0,0,0);
-    text-shadow: 0 0 0.8px rgba(255,255,255,0.7);
+    pointer-events: auto;
+    margin: 0;
 
     display: flex;
     align-items: center;
     justify-content: space-between;
+
+    width: min(1000px, 90%);
+
+    padding: 10px;
+
+    border-radius: 1000px;
+}
+
+.navbar-left {
+    display: flex;
+    gap: 12px;
+}
+
+.navbar-center {
+    display: flex;
+    gap: 12px;
+}
+
+.navbar-right {
+    display: flex;
+    gap: 12px;
+}
+
+
+.box {
+    background-color: red;
+    width: 20px;
+    height: 20px;
 }
 
 .logo {
@@ -115,6 +156,10 @@
 
 /* Mobile styles */
 @media (max-width: 768px) {
+    .navbar {
+
+    }
+
     .nav-item-list {
         gap: 1rem;
     }

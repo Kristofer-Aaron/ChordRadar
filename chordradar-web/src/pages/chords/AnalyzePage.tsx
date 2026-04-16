@@ -14,7 +14,9 @@
 import { useMemo, useState } from "react";
 import "./chordPages.css";
 import Fretboard from "../../components/fretboard/fretboard";
-import { midisToChords, NoteUtilities, playMidiChord, getMasterVolume, setMasterVolume } from "../../utils";
+import { midisToChords } from "../../utils/chordAnalysis";
+import { NoteUtilities } from "../../utils/noteUtilities";
+import { getMasterVolume, playMidiChord, setMasterVolume } from "../../utils/soundGenerator";
 import { usePlaybackShortcut } from "../../hooks/usePlaybackShortcut";
 
 export default function AnalyzePage() {

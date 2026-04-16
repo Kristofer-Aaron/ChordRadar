@@ -1,19 +1,21 @@
-/**
- * Main application styles for ChordRadar.
- * Contains component styles for pages, cards, toolbars, buttons,
- * form inputs, and chord/grip display elements.
- * All design tokens (colors, radii, shadows) are defined as CSS custom properties in index.css.
- * Usage: All components should reference --color-* and --radius-* variables for consistency.
- */
 
-.home-shell {
-  margin: 0 auto;
-  padding: 2rem 1rem;
-  background: var(--color-bg-overlay-20);
-  box-shadow: var(--shadow-lg);
+
+.glass {
+    background-color: transparent;
+    border: none;
+
+    backdrop-filter: blur(0.8px);
+    box-shadow: inset 0px 0px 3px 1px rgba(255, 255, 255, 0.5),
+                0px 4px 5px rgba(0, 0, 0, 0.1);
 }
 
-.home-shell h1 {
-  margin-bottom: 0.5rem;
+.button.glass {
+    border-radius: 1000px;
+    cursor: pointer;
 }
 
+.button.glass:active {
+    box-shadow: inset 0px 0px 3px 1px rgba(255, 255, 255, 0.7),
+                0px 2px 5px rgba(0, 0, 0, 0.1);
+    background-color: rgba(255,255,255,0.05);
+}

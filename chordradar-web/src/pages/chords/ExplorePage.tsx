@@ -15,7 +15,9 @@
 import { useMemo, useState } from "react";
 import "./chordPages.css";
 import Fretboard from "../../components/fretboard/fretboard";
-import { generateChordVoicings, NoteUtilities, playMidiChord, getMasterVolume, setMasterVolume } from "../../utils";
+import { generateChordVoicings } from "../../utils/chordExploration";
+import { NoteUtilities } from "../../utils/noteUtilities";
+import { getMasterVolume, playMidiChord, setMasterVolume } from "../../utils/soundGenerator";
 import { usePlaybackShortcut } from "../../hooks/usePlaybackShortcut";
 
 const ROOT_OPTIONS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] as const;

@@ -1,0 +1,32 @@
+[
+    {
+      "user_name": "testuser",
+      "first_name": "Test",
+      "last_name": "User",
+      "email_address": "testuser@example.com",
+      "password": "asd12345",
+      "role": "user",
+      "status": "active",
+      "preferences": { "theme": "dark" }
+    },
+    {
+      "user_name": "testuser2",
+      "first_name": "Test",
+      "last_name": "User2",
+      "email_address": "testuser2@example.com",
+      "password": "asd12345",
+      "role": "user",
+      "status": "active",
+      "preferences": { "theme": "dark" }
+    },
+    {
+      "user_name": "testadmin",
+      "first_name": "Test",
+      "last_name": "Admin",
+      "email_address": "testadmin@example.com",
+      "password": "admin123",
+      "role": "admin",
+      "status": "active",
+      "preferences": { "theme": "dark" }
+    }
+]
