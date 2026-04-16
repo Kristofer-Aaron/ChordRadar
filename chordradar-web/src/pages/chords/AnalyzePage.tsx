@@ -12,6 +12,7 @@
  */
 
 import { useMemo, useState } from "react";
+import "./chordPages.css";
 import Fretboard from "../../components/fretboard/fretboard";
 import { midisToChords, NoteUtilities, playMidiChord, getMasterVolume, setMasterVolume } from "../../utils";
 import { usePlaybackShortcut } from "../../hooks/usePlaybackShortcut";

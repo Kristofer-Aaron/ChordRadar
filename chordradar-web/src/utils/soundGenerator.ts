@@ -48,7 +48,7 @@ class KarplusStrongSynth {
             stereoSpread = 0,
             filterCutoff = 8000,
             pluckStrength = 0.2,
-            pickNoise = 0.25,
+            pickNoise = 0.05,
             startTime = this.audioContext.currentTime,
         } = options;
 
@@ -187,7 +187,7 @@ export async function playMidiChord(midiNotes: readonly number[]): Promise<void>
     const filterCutoff = 10000;
     const pluckStrength = 0.2;
     const pickNoise = 0.25;
-    const strumDelayMs = 30;
+    const strumDelayMs = 25;
     const baseStartTime = audioContext.currentTime;
 
     midiNotes.forEach((midiNote, index) => {

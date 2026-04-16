@@ -3,11 +3,12 @@ import type { FormEvent } from "react";
 import AuthController from "../../services/authController";
 import type { ApiError } from "../../services/authController";
 
-type SignInPageProps = {
+type SignInModalProps = {
   onSignedIn: () => void;
+  onSwitchToSignUp?: () => void;
 };
 
-export default function SignInPage({ onSignedIn }: SignInPageProps) {
+export default function SignInModal({ onSignedIn, onSwitchToSignUp }: SignInModalProps) {
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -81,7 +82,11 @@ export default function SignInPage({ onSignedIn }: SignInPageProps) {
         </form>
 
         <p className="auth-switch">
-          Need an account? <a href="#/sign-up">Create one</a>
+          Need an account?{' '}
+          {onSwitchToSignUp
+            ? <button type="button" className="auth-switch-btn" onClick={onSwitchToSignUp}>Create one</button>
+            : <a href="#/sign-up">Create one</a>
+          }
         </p>
       </div>
     </section>

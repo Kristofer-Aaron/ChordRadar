@@ -3,11 +3,12 @@ import type { FormEvent } from "react";
 import AuthController from "../../services/authController";
 import type { ApiError } from "../../services/authController";
 
-type SignUpPageProps = {
+type SignUpModalProps = {
   onRegistered: () => void;
+  onSwitchToSignIn?: () => void;
 };
 
-export default function SignUpPage({ onRegistered }: SignUpPageProps) {
+export default function SignUpModal({ onRegistered, onSwitchToSignIn }: SignUpModalProps) {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -136,7 +137,11 @@ export default function SignUpPage({ onRegistered }: SignUpPageProps) {
         </form>
 
         <p className="auth-switch">
-          Already have an account? <a href="#/sign-in">Sign in</a>
+          Already have an account?{' '}
+          {onSwitchToSignIn
+            ? <button type="button" className="auth-switch-btn" onClick={onSwitchToSignIn}>Sign in</button>
+            : <a href="#/sign-in">Sign in</a>
+          }
         </p>
       </div>
     </section>

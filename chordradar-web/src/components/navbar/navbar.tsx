@@ -21,6 +21,8 @@ type ThemeMode = "light" | "dark";
 type NavbarProps = {
   isAuthenticated: boolean;
   onLogout: () => void;
+    onOpenSignIn: () => void;
+    onOpenSignUp: () => void;
 };
 
 type NavItemProps = {
@@ -58,7 +60,7 @@ function resolveInitialTheme(): ThemeMode {
     return "light";
 }
 
-export default function Navbar({ isAuthenticated, onLogout }: NavbarProps) {
+export default function Navbar({ isAuthenticated, onLogout, onOpenSignIn, onOpenSignUp }: NavbarProps) {
     const [theme, setTheme] = useState<ThemeMode>(() => resolveInitialTheme());
 
     useEffect(() => {
@@ -142,26 +144,24 @@ export default function Navbar({ isAuthenticated, onLogout }: NavbarProps) {
                     {isAuthenticated ? (<></>) : (
                     <>
                                                 <li>
-                                                    <NavItem
-                                                        href="#/sign-in"
-                                                        label="Sign in"
-                                                        icon={
+                                                    <button type="button" className="nav-auth-btn" onClick={onOpenSignIn} aria-label="Sign in" title="Sign in">
+                                                        <span className="nav-label">Sign in</span>
+                                                        <span className="nav-icon" aria-hidden="true">
                                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="nav-svg">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-7.5a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 6 21h7.5a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
                                                             </svg>
-                                                        }
-                                                    />
+                                                        </span>
+                                                    </button>
                                                 </li>
                                                 <li>
-                                                    <NavItem
-                                                        href="#/sign-up"
-                                                        label="Sign up"
-                                                        icon={
+                                                    <button type="button" className="nav-auth-btn" onClick={onOpenSignUp} aria-label="Sign up" title="Sign up">
+                                                        <span className="nav-label">Sign up</span>
+                                                        <span className="nav-icon" aria-hidden="true">
                                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="nav-svg">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.25 7.5a5.25 5.25 0 0 1 10.5 0v.75H3.75v-.75Z" />
                                                             </svg>
-                                                        }
-                                                    />
+                                                        </span>
+                                                    </button>
                                                 </li>
                     </>
                     )}
