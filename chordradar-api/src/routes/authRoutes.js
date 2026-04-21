@@ -2,7 +2,7 @@ import express from 'express';
 import { AuthController } from '../controllers/authController.js';
 import { validate } from '../middlewares/validation.js';
 import { loginQuerySchema, loginBodySchema, loginTotpBodySchema, loginTotpQuerySchema, registerBodySchema, verifyQuerySchema, totpConfirmBodySchema, totpDisableBodySchema } from '../schemas/authSchema.js';
-import { authenticate, requireActiveToken, requireEmailVerified, requireStatusActive } from '../middlewares/authentication.js';
+import { authenticate, requireActiveToken, requireAdmin, requireEmailVerified, requireStatusActive } from '../middlewares/authentication.js';
 
 const router = express.Router();
 
@@ -14,6 +14,7 @@ router.post('/register', validate({ body: registerBodySchema }), /*ensureEmailUn
 router.get('/verify', validate({ query: verifyQuerySchema }), AuthController.verify);
 
 // Protected routes
+router.post('/login/gui', requireEmailVerified, requireStatusActive, requireAdmin, validate({ body: loginBodySchema }), AuthController.login);
 router.post('/totp/enroll', authenticate, requireActiveToken, AuthController.totpEnroll);
 router.get('/totp/qr-code', authenticate, requireActiveToken, AuthController.getQrPng);
 router.post('/totp/confirm', authenticate, requireActiveToken, validate({ body: totpConfirmBodySchema }), AuthController.totpConfirm);

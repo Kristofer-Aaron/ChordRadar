@@ -23,7 +23,8 @@ export const TuningController = {
 
 	async create(req, res) {
 		try {
-			const newTuning = await TuningModel.create(req.validated);
+			const payload = req.validated?.body ?? req.validated ?? req.body;
+			const newTuning = await TuningModel.create(payload);
 			res.status(201).json(newTuning);
 		} catch (err) {
 			if(err && err.code === 'ER_DUP_ENTRY') {
@@ -39,7 +40,8 @@ export const TuningController = {
 			return res.status(404).json({ error: 'No tuning with the given id was found' });
 		}
 		try {
-			const updated = await TuningModel.update(req.params.id, req.validated);
+			const payload = req.validated?.body ?? req.validated ?? req.body;
+			const updated = await TuningModel.update(req.params.id, payload);
 			res.json(updated);
 		} catch (err) {
 			if(err && err.code === 'ER_DUP_ENTRY') {

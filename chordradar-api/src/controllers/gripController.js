@@ -23,7 +23,8 @@ export const GripController = {
 
 	async create(req, res) {
 		try {
-			const newGrip = await GripModel.create(req.validated);
+			const payload = req.validated?.body ?? req.validated ?? req.body;
+			const newGrip = await GripModel.create(payload);
 			res.status(201).json(newGrip);
 		} catch (err) {
 			if(err && err.code === 'ER_DUP_ENTRY') {
@@ -39,7 +40,8 @@ export const GripController = {
 			return res.status(404).json({ error: 'No grip with the given id was found' });
 		}
 		try {
-			const updated = await GripModel.update(req.params.id, req.validated);
+			const payload = req.validated?.body ?? req.validated ?? req.body;
+			const updated = await GripModel.update(req.params.id, payload);
 			res.json(updated);
 		} catch (err) {
 			if(err && err.code === 'ER_DUP_ENTRY') {

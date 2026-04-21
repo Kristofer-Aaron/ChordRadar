@@ -23,7 +23,8 @@ export const NotationController = {
 
   async create(req, res) {
     try {
-      const newNotation = await NotationModel.create(req.validated);
+      const payload = req.validated?.body ?? req.validated ?? req.body;
+      const newNotation = await NotationModel.create(payload);
       res.status(201).json(newNotation);
     } catch (err) {
       if(err && err.code === 'ER_DUP_ENTRY') {
@@ -39,7 +40,8 @@ export const NotationController = {
       return res.status(404).json({ error: 'No notation with the given id was found' });
     }
     try {
-      const updated = await NotationModel.update(req.params.id, req.validated);
+      const payload = req.validated?.body ?? req.validated ?? req.body;
+      const updated = await NotationModel.update(req.params.id, payload);
       res.json(updated);
     } catch (err) {
       if(err && err.code === 'ER_DUP_ENTRY') {
