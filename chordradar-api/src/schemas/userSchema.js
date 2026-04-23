@@ -87,12 +87,12 @@ export const createUserBodySchema = Joi.object({
   email_address: emailStr.required(),
 
   password_hash: passwordHashStr.required(),
-  password_changed_at: Joi.date().required().messages({
+  password_changed_at: Joi.date().optional()/*.messages({
     "date.base": "password_changed_at must be a valid date",
     "any.required": "password_changed_at is required",
-  }),
+  }),*/,
 
-  preferences: preferencesObj.required(),
+  preferences: preferencesObj.optional(),
 
   role: roleEnum.optional(),
   status: statusEnum.optional(),
