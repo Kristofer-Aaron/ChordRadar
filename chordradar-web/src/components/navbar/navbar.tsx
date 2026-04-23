@@ -1,14 +1,3 @@
-/**
- * Navbar - Top navigation bar with routing links and theme toggle
- *
- * Displays logo, nav links (Analyze, Explore), and theme toggle button (light/dark).
- * Theme state: reads from localStorage → system preference → defaults to light.
- * On theme change: sets document data-theme and data-bs-theme attributes to trigger
- * background texture refresh via suedeTextureRenderer mutation observer.
- *
- * Props: isAuthenticated (shows/hides links), onLogout (calls logout handler).
- * Theme persistence: localStorage key "chordradar.theme".
- */
 
 import { useEffect, useState } from "react";
 import type { MouseEventHandler, ReactNode } from "react";
@@ -16,7 +5,25 @@ import "./navbar.css";
 
 const THEME_STORAGE_KEY = "chordradar.theme";
 
-type ThemeMode = "light" | "dark";
+type ThemeName = "default-light" | "default-dark";
+
+function isThemeName(value: string): value is ThemeName {
+    return value === "default-light" || value === "default-dark";
+}
+
+function normalizeThemeName(value: string): ThemeName {
+    // Backward compatibility for previous persisted values
+    if (isThemeName(value)) {
+        return value;
+    }
+
+    // Default to system preference or default-light
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        return "default-dark";
+    }
+
+    return "default-light";
+}
 
 type NavbarProps = {
   isAuthenticated: boolean;
@@ -43,47 +50,62 @@ function NavItem({ href, label, icon, onClick }: NavItemProps) {
     );
 }
 
-function resolveInitialTheme(): ThemeMode {
+function resolveInitialTheme(): ThemeName {
     try {
         const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-        if (stored === "light" || stored === "dark") {
-            return stored;
+        if (stored) {
+            const normalizedTheme = normalizeThemeName(stored);
+            if (normalizedTheme) {
+                return normalizedTheme;
+            }
         }
     } catch {
         // Ignore storage access errors.
     }
 
     if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        return "dark";
+        return "default-dark";
     }
 
-    return "light";
+    return "default-light";
 }
 
 export default function Navbar({ isAuthenticated, onLogout, onOpenSignIn, onOpenSignUp }: NavbarProps) {
-    const [theme, setTheme] = useState<ThemeMode>(() => resolveInitialTheme());
+    const [theme, setTheme] = useState<ThemeName>(() => resolveInitialTheme());
+    const isDarkMode = theme === "default-dark";
 
     useEffect(() => {
         const html = document.documentElement;
         html.setAttribute("data-theme", theme);
-        html.setAttribute("data-bs-theme", theme);
+        html.setAttribute("data-bs-theme", isDarkMode ? "dark" : "light");
 
         try {
             window.localStorage.setItem(THEME_STORAGE_KEY, theme);
         } catch {
             // Ignore storage write errors.
         }
-    }, [theme]);
+    }, [theme, isDarkMode]);
 
-    const nextThemeLabel = theme === "dark" ? "Light mode" : "Dark mode";
+    const nextModeLabel = isDarkMode ? "Light mode" : "Dark mode";
 
     const [collapsed, setCollapsed] = useState(false);
 
     return (
         <>
-        <nav className = {"navbar " + (collapsed ? "collapsed" : "")}>
+        <nav className = {"navbar " + (collapsed ? "navbar-collapsed" : "")}>
             <div className="navbar-container glass">
-                <a className="logo" href="#/">ChordRadar</a>
+                <div className="navbar-left">
+                    <a className="logo" href="#/">ChordRadar</a>
+                </div>
+
+                <div className="navbar-center">
+
+                </div>
+
+                <div className="navbar-right">
+
+                </div>
+
 
                 <ul className="nav-item-list">
                     <li>
@@ -110,17 +132,18 @@ export default function Navbar({ isAuthenticated, onLogout, onOpenSignIn, onOpen
                 </ul>
 
                 <ul className = "nav-item-list">
+
                                         <li>
                                             <button
                                                 type="button"
-                                                className="theme-toggle"
-                                                aria-label={nextThemeLabel}
-                                                title={nextThemeLabel}
-                                                onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+                                                className="nav-auth-btn theme-toggle"
+                                                aria-label={nextModeLabel}
+                                                title={nextModeLabel}
+                                                onClick={() => setTheme(isDarkMode ? "default-light" : "default-dark")}
                                             >
-                                                <span className="nav-label">{nextThemeLabel}</span>
+                                                <span className="nav-label">{nextModeLabel}</span>
                                                 <span className="nav-icon" aria-hidden="true">
-                                                    {theme === "dark" ? (
+                                                    {isDarkMode ? (
                                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="nav-svg">
                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1.5m0 15V21m8.25-9H21M3 12h1.5m13.864 6.364-1.06-1.06M6.697 6.697l-1.06-1.06m12.727 0-1.06 1.06M6.697 17.303l-1.06 1.06M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
                                                         </svg>
@@ -190,7 +213,9 @@ export default function Navbar({ isAuthenticated, onLogout, onOpenSignIn, onOpen
                 aria-label="Toggle navigation"
                 title={collapsed ? "Expand navbar" : "Collapse navbar"}>
                 <span>
-                    
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                    </svg>
                 </span>
         </button>
         </>

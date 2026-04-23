@@ -38,7 +38,7 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp }: SignInModa
 
   return (
     <section className="auth-shell">
-      <div className="auth-card">
+      <div className="auth-card glass">
         <h2>Sign in</h2>
         <p className="auth-muted">Use your ChordRadar account to continue.</p>
 

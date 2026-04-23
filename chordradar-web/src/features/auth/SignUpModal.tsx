@@ -58,7 +58,7 @@ export default function SignUpModal({ onRegistered, onSwitchToSignIn }: SignUpMo
 
   return (
     <section className="auth-shell">
-      <div className="auth-card">
+      <div className="auth-card glass">
         <h2>Create account</h2>
         <p className="auth-muted">Join ChordRadar and save your progress.</p>
 

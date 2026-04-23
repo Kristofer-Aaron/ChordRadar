@@ -1,52 +1,55 @@
 .auth-shell {
-  min-height: calc(100svh - 60px);
+  min-height: 0;
   display: grid;
   place-items: center;
-  padding: 1rem;
+  padding: 1.25rem;
 }
 
 .auth-card {
   width: 100%;
   max-width: 460px;
-  padding: 1.25rem;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.3);
+  padding: 1.4rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--glass-secondary) 28%, transparent);
 }
 
 .auth-card h2 {
-  margin: 0 0 0.35rem;
+  margin: 0;
+  color: var(--glass-secondary);
 }
 
 .auth-muted {
-  margin: 0 0 1rem;
-  opacity: 0.85;
+  margin: 0.35rem 0 1rem;
+  color: var(--text-secondary);
 }
 
 .auth-form {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .auth-form label {
   display: grid;
   gap: 0.35rem;
   font-size: 0.95rem;
+  color: var(--glass-secondary);
 }
 
 .auth-form input {
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--glass-primary);
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.35);
-  color: inherit;
-  padding: 0.6rem 0.7rem;
+  background: oklch(0.2 0.005 80 / 0.35);
+  color: var(--glass-secondary);
+  padding: 0.62rem 0.72rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
 .auth-form input:focus {
   outline: none;
-  border-color: rgba(76, 200, 219, 0.8);
-  box-shadow: 0 0 0 2px rgba(76, 200, 219, 0.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent) 38%, transparent);
+  background: oklch(0.22 0.005 80 / 0.52);
 }
 
 .auth-checkbox {
@@ -62,13 +65,24 @@
 }
 
 .auth-form button {
-  border: 0;
-  border-radius: 10px;
+  border: 1px solid var(--glass-primary);
+  border-radius: var(--radius-full);
   padding: 0.7rem 1rem;
-  background: #1ca8c0;
-  color: #031116;
+  background: oklch(0.3 0.005 80 / 0.45);
+  box-shadow: inset 0 0 3px 1px var(--glass-primary), 0 1px 5px rgba(0, 0, 0, 0.35);
+  color: var(--glass-secondary);
   font-weight: 700;
   cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
+}
+
+.auth-form button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.auth-form button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .auth-form button:disabled {
@@ -78,56 +92,60 @@
 
 .auth-error {
   border-radius: 10px;
-  background: rgba(238, 84, 84, 0.2);
-  border: 1px solid rgba(238, 84, 84, 0.45);
-  color: #ffd7d7;
+  background: oklch(0.43 0.17 28 / 0.18);
+  border: 1px solid oklch(0.56 0.16 28 / 0.55);
+  color: oklch(0.94 0.03 28);
   padding: 0.55rem 0.7rem;
 }
 
 .auth-success {
   border-radius: 10px;
-  background: rgba(82, 188, 121, 0.18);
-  border: 1px solid rgba(82, 188, 121, 0.4);
-  color: #d6f9e2;
+  background: oklch(0.49 0.14 146 / 0.2);
+  border: 1px solid oklch(0.66 0.15 146 / 0.52);
+  color: oklch(0.94 0.03 146);
   padding: 0.55rem 0.7rem;
 }
 
 .auth-switch {
   margin-top: 1rem;
   font-size: 0.92rem;
+  color: var(--text-secondary);
 }
 
 .auth-switch a {
   text-decoration: none;
+  color: var(--glass-secondary);
 }
 
 .auth-switch a:hover {
   text-decoration: underline;
+  color: var(--accent);
 }
 
 .auth-switch-btn {
   background: none;
   border: none;
   padding: 0;
-  color: inherit;
+  color: var(--glass-secondary);
   font-size: inherit;
   font-family: inherit;
   text-decoration: none;
   cursor: pointer;
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .auth-switch-btn:hover {
   text-decoration: underline;
+  color: var(--accent);
 }
 
 .auth-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: oklch(0.2 0.005 220 / 0.45);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
   display: grid;
   place-items: center;
   padding: 1rem;
@@ -140,11 +158,11 @@
   max-height: calc(100svh - 2rem);
   overflow-y: auto;
   border-radius: 18px;
-  background: rgba(18, 18, 26, 0.82);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--glass-primary);
+  background: oklch(0.23 0.007 220 / 0.54);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.35);
 }
 
 .auth-modal-panel .auth-shell {
@@ -160,21 +178,33 @@
   height: 32px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: oklch(0.3 0.01 220 / 0.48);
+  border: 1px solid var(--glass-primary);
   border-radius: 8px;
-  color: inherit;
+  color: var(--glass-secondary);
   cursor: pointer;
   z-index: 1;
-  transition: background 0.15s;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .auth-modal-close:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: oklch(0.34 0.01 220 / 0.62);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .auth-modal-close svg {
   width: 16px;
   height: 16px;
   display: block;
+}
+
+@media (max-width: 600px) {
+  .auth-shell {
+    padding: 1rem;
+  }
+
+  .auth-card {
+    padding: 1.15rem;
+  }
 }

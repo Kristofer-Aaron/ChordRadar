@@ -1,12 +1,367 @@
+html {
+    overscroll-behavior: none;
+}
 
+body {
+    font-family: var(--font-rubik);
+
+    background-color: var(--bg-main);
+    
+    --grid-size: 32px;
+    --grid-thickness: 1.2px;
+
+    background-size: var(--grid-size) var(--grid-size);
+    background-image: linear-gradient(to right, var(--bg-grid) var(--grid-thickness), transparent var(--grid-thickness)),
+                      linear-gradient(to bottom, var(--bg-grid) var(--grid-thickness), transparent var(--grid-thickness));
+}
+
+.page-shell {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 20px;
+    padding-top: 90px;
+    box-sizing: border-box;
+    transition: padding-top 0.3s ease;
+}
+
+#root:has(.navbar.navbar-collapsed) main {
+    padding-top: 20px;
+}
+
+/* #region module */
+
+/* #region shell */
+.module-shell {
+    position: relative;
+    margin: auto;
+    width: fit-content;
+
+    --module-edge-size: 20px;
+    height: calc(var(--module-height) + var(--module-edge-size));
+
+    border-radius: var(--radius-lg);
+
+    background-image: linear-gradient(
+        to right,
+        var(--module-container-side) calc(var(--radius-lg) - 10px),
+        var(--module-container-center) calc(var(--radius-lg) + 5px),
+        var(--module-container-center) calc(100% - var(--radius-lg) - 5px),
+        var(--module-container-side) calc(100% - var(--radius-lg) + 10px)
+    );
+
+    box-shadow: 0px 10px 5px 3px rgba(0, 0, 0, 0.2);
+}
+
+.module {
+    position: relative;
+    box-sizing: border-box;
+
+    height: var(--module-height);
+
+    border: 1px solid var(--module-border);
+
+    background-image: linear-gradient(
+        var(--module-surface-top),
+        var(--module-surface-bottom)
+    );
+    background-clip: border-box;
+    background-blend-mode: multiply;
+}
+
+.module::before {
+    content: "";
+    position: absolute;
+    
+    width: 100%;
+    height: calc(100% + var(--module-edge-size));
+
+    border-radius: inherit;
+
+    background-image: url(./assets/images/noise.png);
+    background-size: 128px 128px;
+
+    opacity: 0.5;
+    image-rendering: pixelated;
+    mix-blend-mode: multiply;
+
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* #endregion shell */
+
+.module .title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* #region controls */
+
+/* #region button */
+
+.module .button {
+    position: relative;
+    height: 28px;
+    width: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    color: var(--module-control-color);
+
+    border-radius: var(--radius-full);
+    border: 1px solid var(--module-control-border);
+    background-color: var(--module-control-bg);
+    cursor: pointer;
+    box-shadow: inset 0px 0px var(--module-control-pressed),
+        inset 0px 0px 0px var(--module-control-shadow),
+        inset 0px 1px 1px -1px var(--module-control-shine),
+        0px 1px 1px -1px var(--module-control-shine);
+    transition: box-shadow 0.1s ease;
+}
+
+.module .button:active {
+    box-shadow: inset 0px 2px var(--module-control-pressed),
+        inset 0px -1px 3px var(--module-control-shadow),
+        inset 0px 3px 1px -1px var(--module-control-shine),
+        0px 1px 1px -1px var(--module-control-shine);
+}
+
+.module .button::before {
+    content: "";
+    position: absolute;
+    
+    inset: 0;
+
+    border-radius: inherit;
+
+    background-image: url(./assets/images/noise.png);
+    background-size: 128px 128px;
+
+    opacity: 0.5;
+    image-rendering: pixelated;
+    mix-blend-mode: multiply;
+
+    pointer-events: none;
+    z-index: 0;
+    transition: transform 0.1s ease;
+}
+
+.module .button:active::before {
+    transform: translateY(2px);
+}
+
+
+.module .button svg {
+    stroke: var(--module-control-color);
+    transition: transform 0.1s ease;
+}
+
+.module .button:active svg{
+    transform: translateY(2px);
+}
+
+/* #endregion button */
+
+/* #region slider */
+
+.module input[type="range"].slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+}
+
+.module input[type="range"].slider:focus {
+    outline: none;
+}
+
+/* Track */
+
+/* Chrome / Edge / Safari */
+input[type="range"].slider::-webkit-slider-runnable-track {
+    height: var(--module-control-size);
+    width: var(--module-control-size);
+    box-sizing: border-box;
+
+
+    background: var(--module-control-shadow);
+    border: 1px solid var(--module-control-border);
+    border-radius: var(--radius-full);
+}
+
+/* Firefox */
+input[type="range"].slider::-moz-range-track {
+    height: var(--module-control-size);
+    width: var(--module-control-size);
+    box-sizing: border-box;
+
+    background: var(--module-control-shadow);
+    border: 1px solid var(--module-control-border);
+    border-radius: var(--radius-full);
+}
+
+/* Thumb */
+
+/* Chrome / Safari */
+.module input[type="range"].slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+
+    width: var(--module-control-size);
+    height: var(--module-control-size);
+    
+    overflow: hidden;
+
+    border-radius: var(--radius-full);
+    border: 1px solid var(--module-control-border);
+
+    background-color: var(--module-control-bg);
+    box-shadow: inset 0px 0px var(--module-control-pressed),
+        inset 0px 0px 0px var(--module-control-shadow),
+        inset 0px 1px 1px -1px var(--module-control-shine),
+        0px 1px 1px -1px var(--module-control-shine);
+
+    cursor: pointer;
+
+    margin-top: 0;
+
+    transition: transform 0.15s ease;
+}
+
+/* Firefox */
+.module input[type="range"].slider::-moz-range-thumb {
+    width: var(--module-control-size);
+    height: var(--module-control-size);
+
+    
+
+    box-sizing: border-box;
+
+    border-radius: var(--radius-full);
+    border: 1px solid var(--module-control-border);
+
+    background-color: var(--module-control-bg);
+    box-shadow: inset 0px 0px var(--module-control-pressed),
+        inset 0px 0px 0px var(--module-control-shadow),
+        inset 0px 1px 1px -1px var(--module-control-shine);
+
+    cursor: pointer;
+
+    transition: transform 0.15s ease;
+}
+
+.module input[type="range"].slider::-moz-range-thumb::before {
+    content: "";
+    position: absolute;
+    
+    inset: 0;
+
+    border-radius: inherit;
+
+    background-image: url(./assets/images/noise.png);
+    background-size: 128px 128px;
+
+    opacity: 0.5;
+    image-rendering: pixelated;
+    mix-blend-mode: multiply;
+
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* .module .button::before {
+    content: "";
+    position: absolute;
+    
+    inset: 0;
+
+    border-radius: inherit;
+
+    background-image: url(./assets/images/noise.png);
+    background-size: 128px 128px;
+
+    opacity: 0.5;
+    image-rendering: pixelated;
+    mix-blend-mode: multiply;
+
+    pointer-events: none;
+    z-index: 0;
+    transition: transform 0.1s ease;
+}
+ */
+
+
+/* Vertical */
+
+input[type="range"].slider.vertical {
+    writing-mode: vertical-lr;
+    direction: rtl;
+}
+
+/* #endregion slider */
+
+/* #endregion controls */
+
+/* #region display */
+.module .display-frame {
+    position: relative;
+
+    border-radius: var(--radius-md);
+    background-color: var(--module-display-frame);
+    padding: 5px;
+}
+
+.module .display-frame::before {
+    content: "";
+    position: absolute;
+    
+    inset: 4px;
+
+    border-radius: var(--radius-sm);
+
+    background-image: linear-gradient(to bottom, var(--module-display-shine) 0%, transparent 100%);
+
+    pointer-events: none;
+}
+
+.module .display { 
+    position: relative;
+    width: 100%;
+    height: 100%;
+
+    margin: 0;
+
+    border-radius: var(--radius-sm);
+
+    background-image: linear-gradient(
+        var(--module-display-top),
+        var(--module-display-bottom)
+    );
+
+    background-color: var(--module-display-top);
+    background-clip: border-box;
+}
+
+
+
+/* #endregion module */
 
 .glass {
     background-color: transparent;
     border: none;
 
-    backdrop-filter: blur(0.8px);
-    box-shadow: inset 0px 0px 3px 1px rgba(255, 255, 255, 0.5),
-                0px 4px 5px rgba(0, 0, 0, 0.1);
+    /* background-image: url('data:image/svg+xml,<svg style="display:none;"><feTurbulence type="turbulence"baseFrequency="0.01"numOctaves="2"result="turbulence"></feturbulence><feDisplacementMap in="SourceGraphic"in2="turbulence"scale="200"xChannelSelector="R"yChannelSelector="G" /></svg>'); */
+
+    backdrop-filter: blur(2px);
+    box-shadow: inset 0px 0px 3px 1px var(--glass-primary),
+                0px 1px 5px rgba(0, 0, 0, 0.4);
 }
 
 .button.glass {
@@ -14,8 +369,11 @@
     cursor: pointer;
 }
 
+.button.glass svg {
+    stroke: var(--glass-secondary);
+}
+
 .button.glass:active {
-    box-shadow: inset 0px 0px 3px 1px rgba(255, 255, 255, 0.7),
-                0px 2px 5px rgba(0, 0, 0, 0.1);
-    background-color: rgba(255,255,255,0.05);
+    box-shadow: inset 0px 0px 3px 1px var(--glass-secondary),
+                0px 2px 5px rgba(0, 0, 0, 0.4);
 }
