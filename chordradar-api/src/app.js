@@ -12,7 +12,6 @@ import tuningRoutes from './routes/tuningRoutes.js';
 import gripRoutes from './routes/gripRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import { register } from "node:module";
 
 const app = express();
 const openapiSpec = YAML.load("./docs/openapi.yaml");

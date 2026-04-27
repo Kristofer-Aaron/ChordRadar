@@ -24,22 +24,6 @@ const gripStr = Joi.string().trim().max(LENGTHS.GRIP_MAX).messages({
   "string.max": `grip must be at most ${LENGTHS.GRIP_MAX} characters`,
 });
 
-/*
-export const fieldsObjectSchema = Joi.object({
-  notation: Joi.string().valid("value"),
-  tuning: Joi.string().valid("value"),
-  grip: Joi.string().valid("value"),
-}).unknown(false);
-
-export const getAllQuerySchema = Joi.object({
-  fields: fieldsObjectSchema.optional(),
-}).unknown(true);
-
-export const getAllRawQuerySchema = Joi.object({
-  fields: Joi.string().optional(), // JSON string; parse in middleware, then validate with fieldsObjectSchema
-}).unknown(true);
-*/
-
 /** :id param schema (used in getById, patch, remove). */
 export const idParamSchema = Joi.object({ id: idParam });
 

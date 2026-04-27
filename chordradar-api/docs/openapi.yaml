@@ -7,7 +7,7 @@ info:
     Includes /auth, /users, /api/chords, /api/notations, /api/tunings, and /api/grips.
 
 servers:
-  - url: http://chordradar.akos.local
+  - url: http://localhost:3030
     description: Local dev server
 
 tags:

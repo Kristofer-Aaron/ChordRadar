@@ -89,7 +89,7 @@ jest.unstable_mockModule('../src/utils/qrcode.js', () => ({
 
 jest.unstable_mockModule('../src/config/db.js', () => ({ default: pool }));
 
-// ✅ default imports in controller → default mocks here
+// default imports in controller → default mocks here
 jest.unstable_mockModule('jsonwebtoken', () => ({ default: jwt }));
 jest.unstable_mockModule('bcrypt', () => ({ default: bcrypt }));
 jest.unstable_mockModule('crypto', () => ({ default: cryptoMock }));

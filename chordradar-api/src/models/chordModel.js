@@ -9,6 +9,21 @@ export const ChordModel = {
     const query = `SELECT chords.id, ${notationField}, ${tuningField}, ${gripField} FROM chords
                    JOIN notations ON chords.notation_id = notations.id
                    JOIN tunings   ON chords.tuning_id   = tunings.id
+                   JOIN grips     ON chords.grip_id     = grips.id
+                   WHERE chords.id < ${Number(process.env.DEFAULT_CHORDS_NUMBER) + 1}`;
+
+    const [rows] = await pool.query(query);
+    return rows;
+  },
+
+    async findAllGui({ fields = {} } = {}) {
+    const notationField = fields.notation === "value" ? "notations.value AS notation" : "chords.notation_id AS notation_id";
+    const tuningField = fields.tuning === "value" ? "tunings.value AS tuning" : "tunings.id AS tuning_id";
+    const gripField = fields.grip === "value" ? "grips.strings AS grip" : "grips.id AS grip_id";
+
+    const query = `SELECT chords.id, ${notationField}, ${tuningField}, ${gripField} FROM chords
+                   JOIN notations ON chords.notation_id = notations.id
+                   JOIN tunings   ON chords.tuning_id   = tunings.id
                    JOIN grips     ON chords.grip_id     = grips.id`;
 
     const [rows] = await pool.query(query);
