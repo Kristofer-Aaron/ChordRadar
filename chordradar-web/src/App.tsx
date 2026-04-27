@@ -4,24 +4,49 @@ import "./features/auth/authModal.css";
 import Navbar from "./components/navbar/navbar";
 import AuthController from "./services/authController";
 import SignInModal from "./features/auth/SignInModal";
+import SignInTotpPage from "./features/auth/SignInTotpPage";
 import SignUpModal from "./features/auth/SignUpModal";
+import SettingsModal from "./features/auth/SettingsModal";
 import Processor from "./components/modules/processor";
 import Fretboard from "./components/modules/fretboard";
 import { midisToChords } from "./utils/chordAnalysis";
 import { generateChordVoicings } from "./utils/chordExploration";
 import { NoteUtilities } from "./utils/noteUtilities";
 
-type AuthModal = 'sign-in' | 'sign-up' | null;
+type RouteName = 'home' | 'sign-in' | 'sign-in-totp' | 'sign-up' | 'settings';
+
+function resolveRouteFromHash(hashValue: string): RouteName {
+  const normalized = hashValue.split('?')[0].replace(/\/+$/, '');
+
+  if (normalized === '#/sign-in') return 'sign-in';
+  if (normalized === '#/sign-in/totp') return 'sign-in-totp';
+  if (normalized === '#/sign-up') return 'sign-up';
+  if (normalized === '#/settings') return 'settings';
+  return 'home';
+}
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(AuthController.isAuthenticated());
-  const [authModal, setAuthModal] = useState<AuthModal>(null);
+  const [route, setRoute] = useState<RouteName>(() => resolveRouteFromHash(window.location.hash));
   const [fretboard2Midis, setFretboard2Midis] = useState<number[]>([]);
   const [exploreExternalFrets, setExploreExternalFrets] = useState<Record<number, number | null> | null>(null);
 
-  const openSignIn = useCallback(() => setAuthModal('sign-in'), []);
-  const openSignUp = useCallback(() => setAuthModal('sign-up'), []);
-  const closeModal = useCallback(() => setAuthModal(null), []);
+  const navigateTo = useCallback((hash: string) => {
+    setRoute(resolveRouteFromHash(hash));
+    if (window.location.hash !== hash) {
+      window.location.hash = hash;
+    }
+  }, []);
+
+  const openSignIn = useCallback(() => {
+    navigateTo('#/sign-in');
+  }, [navigateTo]);
+  const openSignUp = useCallback(() => {
+    navigateTo('#/sign-up');
+  }, [navigateTo]);
+  const openSettings = useCallback(() => {
+    navigateTo('#/settings');
+  }, [navigateTo]);
 
   useEffect(() => {
     function onStorageChange(event: StorageEvent) {
@@ -29,8 +54,17 @@ function App() {
         setIsAuthenticated(AuthController.isAuthenticated());
       }
     }
+
+    function onHashChange() {
+      setRoute(resolveRouteFromHash(window.location.hash));
+    }
+
     window.addEventListener("storage", onStorageChange);
-    return () => window.removeEventListener("storage", onStorageChange);
+    window.addEventListener("hashchange", onHashChange);
+    return () => {
+      window.removeEventListener("storage", onStorageChange);
+      window.removeEventListener("hashchange", onHashChange);
+    };
   }, []);
 
   async function handleLogout() {
@@ -40,6 +74,7 @@ function App() {
       AuthController.clearSession();
     }
     setIsAuthenticated(false);
+    navigateTo('#/');
   }
 
   const fretboard2Chords = useMemo(() => midisToChords(fretboard2Midis), [fretboard2Midis]);
@@ -95,6 +130,82 @@ function App() {
     if (voicings.length > 0) handleGripSelect(voicings[0]);
   }
 
+  useEffect(() => {
+    if (route === 'settings' && !isAuthenticated) {
+      if (window.location.hash !== '#/sign-in') {
+        window.location.hash = '#/sign-in';
+      }
+    }
+  }, [route, isAuthenticated]);
+
+  const content = route === 'sign-in'
+    ? (
+      <SignInModal
+        onSignedIn={() => {
+          setIsAuthenticated(true);
+          navigateTo('#/');
+        }}
+        onSwitchToTotp={() => {
+          navigateTo('#/sign-in/totp');
+        }}
+        onSwitchToSignUp={() => {
+          navigateTo('#/sign-up');
+        }}
+      />
+    )
+    : route === 'sign-in-totp'
+      ? (
+        <SignInTotpPage
+          onSignedIn={() => {
+            setIsAuthenticated(true);
+            navigateTo('#/');
+          }}
+          onSwitchToPassword={() => {
+            navigateTo('#/sign-in');
+          }}
+          onSwitchToSignUp={() => {
+            navigateTo('#/sign-up');
+          }}
+        />
+      )
+    : route === 'sign-up'
+      ? (
+        <SignUpModal
+          onRegistered={() => {
+            navigateTo('#/sign-in');
+          }}
+          onSwitchToSignIn={() => {
+            navigateTo('#/sign-in');
+          }}
+        />
+      )
+      : route === 'settings'
+        ? (
+          <SettingsModal
+            onDeleted={() => {
+              setIsAuthenticated(false);
+              navigateTo('#/sign-in');
+            }}
+          />
+        )
+        : (
+          <main className="page-shell">
+            <Processor
+              mode="analyze"
+              foundChords={fretboard2Chords}
+              selectedMidis={fretboard2Midis}
+              isAuthenticated={isAuthenticated}
+              onGripSelect={handleGripSelect}
+              onSavedChordSelect={parseAndSelectChord}
+            />
+            <Fretboard
+              onSelectedMidisChange={setFretboard2Midis}
+              externalFrets={exploreExternalFrets}
+              onFretUserChange={() => setExploreExternalFrets(null)}
+            />
+          </main>
+        );
+
   return (
     <>
       <Navbar
@@ -102,43 +213,9 @@ function App() {
         onLogout={handleLogout}
         onOpenSignIn={openSignIn}
         onOpenSignUp={openSignUp}
+        onOpenSettings={openSettings}
       />
-      <main className="page-shell">
-        <Processor
-          mode="analyze"
-          foundChords={fretboard2Chords}
-          isAuthenticated={isAuthenticated}
-          onGripSelect={handleGripSelect}
-          onSavedChordSelect={parseAndSelectChord}
-        />
-        <Fretboard
-          onSelectedMidisChange={setFretboard2Midis}
-          externalFrets={exploreExternalFrets}
-          onFretUserChange={() => setExploreExternalFrets(null)}
-        />
-      </main>
-      {authModal !== null && (
-        <div className="auth-modal-overlay" onClick={closeModal}>
-          <div className="auth-modal-panel glass" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="auth-modal-close" onClick={closeModal} aria-label="Close">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-            {authModal === 'sign-in' ? (
-              <SignInModal
-                onSignedIn={() => { setIsAuthenticated(true); closeModal(); }}
-                onSwitchToSignUp={() => setAuthModal('sign-up')}
-              />
-            ) : (
-              <SignUpModal
-                onRegistered={closeModal}
-                onSwitchToSignIn={() => setAuthModal('sign-in')}
-              />
-            )}
-          </div>
-        </div>
-      )}
+      {content}
     </>
   );
 }

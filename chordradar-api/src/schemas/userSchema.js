@@ -117,3 +117,13 @@ export const patchUserBodySchema = Joi.object({
 })
   .min(1)
   .messages({ "object.min": "Provide at least one updatable field" });
+
+export const selfPatchUserBodySchema = Joi.object({
+  user_name: userNameStr,
+  first_name: firstNameStr,
+  last_name: lastNameStr,
+  email_address: emailStr,
+  preferences: preferencesObj,
+})
+  .min(1)
+  .messages({ "object.min": "Provide at least one updatable field" });

@@ -1,7 +1,9 @@
 import express from 'express';
 import { AuthController } from '../controllers/authController.js';
+import UserController from '../controllers/userController.js';
 import { validate } from '../middlewares/validation.js';
 import { loginQuerySchema, loginBodySchema, loginTotpBodySchema, loginTotpQuerySchema, registerBodySchema, verifyQuerySchema, totpConfirmBodySchema, totpDisableBodySchema } from '../schemas/authSchema.js';
+import { selfPatchUserBodySchema } from '../schemas/userSchema.js';
 import { authenticate, requireActiveToken, requireAdmin, requireEmailVerified, requireStatusActive } from '../middlewares/authentication.js';
 
 const router = express.Router();
@@ -19,5 +21,7 @@ router.post('/totp/enroll', authenticate, requireActiveToken, AuthController.tot
 router.get('/totp/qr-code', authenticate, requireActiveToken, AuthController.getQrPng);
 router.post('/totp/confirm', authenticate, requireActiveToken, validate({ body: totpConfirmBodySchema }), AuthController.totpConfirm);
 router.post('/totp/disable', authenticate, requireActiveToken, validate({ body: totpDisableBodySchema }), AuthController.totpDisable);
+router.patch('/me', authenticate, requireActiveToken, validate({ body: selfPatchUserBodySchema }), UserController.patchSelf);
+router.delete('/me', authenticate, requireActiveToken, UserController.removeSelf);
 
 export default router;

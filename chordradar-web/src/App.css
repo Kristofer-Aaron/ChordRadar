@@ -17,11 +17,11 @@ body {
 
 .page-shell {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    flex-wrap: nowrap;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
     gap: 20px;
-    padding: 20px;
     padding-top: 90px;
     box-sizing: border-box;
     transition: padding-top 0.3s ease;
@@ -314,7 +314,7 @@ input[type="range"].slider.vertical {
     position: relative;
 
     border-radius: var(--radius-md);
-    background-color: var(--module-display-frame);
+    background-color: var(--display-frame);
     padding: 5px;
 }
 
@@ -326,7 +326,7 @@ input[type="range"].slider.vertical {
 
     border-radius: var(--radius-sm);
 
-    background-image: linear-gradient(to bottom, var(--module-display-shine) 0%, transparent 100%);
+    background-image: linear-gradient(to bottom, var(--display-shine) 0%, transparent 100%);
 
     pointer-events: none;
 }
@@ -341,11 +341,11 @@ input[type="range"].slider.vertical {
     border-radius: var(--radius-sm);
 
     background-image: linear-gradient(
-        var(--module-display-top),
-        var(--module-display-bottom)
+        var(--display-top),
+        var(--display-bottom)
     );
 
-    background-color: var(--module-display-top);
+    background-color: var(--display-top);
     background-clip: border-box;
 }
 

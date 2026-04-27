@@ -3,16 +3,15 @@ import type { FormEvent } from "react";
 import AuthController from "../../services/authController";
 import type { ApiError } from "../../services/authController";
 
-type SignInModalProps = {
+type SignInTotpPageProps = {
   onSignedIn: () => void;
+  onSwitchToPassword?: () => void;
   onSwitchToSignUp?: () => void;
-  onSwitchToTotp?: () => void;
 };
 
-export default function SignInModal({ onSignedIn, onSwitchToSignUp, onSwitchToTotp }: SignInModalProps) {
-  const [emailAddress, setEmailAddress] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+export default function SignInTotpPage({ onSignedIn, onSwitchToPassword, onSwitchToSignUp }: SignInTotpPageProps) {
+  const [emailAddress, setEmailAddress] = useState(AuthController.getEmail() ?? "");
+  const [totpToken, setTotpToken] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -22,16 +21,15 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp, onSwitchToTo
     setSubmitting(true);
 
     try {
-      await AuthController.login({
+      await AuthController.loginTotp({
         emailAddress,
-        password,
-        rememberMe,
+        totpToken,
       });
       onSignedIn();
       window.location.hash = "#/";
     } catch (error) {
       const apiError = error as ApiError;
-      setErrorMessage(apiError?.message || "Sign in failed.");
+      setErrorMessage(apiError?.message || "TOTP sign in failed.");
     } finally {
       setSubmitting(false);
     }
@@ -40,8 +38,8 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp, onSwitchToTo
   return (
     <section className="auth-shell">
       <div className="auth-card glass">
-        <h2>Sign in</h2>
-        <p className="auth-muted">Use your ChordRadar account to continue.</p>
+        <h2>TOTP sign in</h2>
+        <p className="auth-muted">Use your email and 6-digit authenticator code.</p>
 
         <form onSubmit={onSubmit} className="auth-form">
           <label>
@@ -56,37 +54,31 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp, onSwitchToTo
           </label>
 
           <label>
-            Password
+            TOTP code
             <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              type="text"
+              value={totpToken}
+              onChange={(event) => setTotpToken(event.target.value)}
               required
-              autoComplete="current-password"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="123456"
             />
-          </label>
-
-          <label className="auth-checkbox">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(event) => setRememberMe(event.target.checked)}
-            />
-            Remember me
           </label>
 
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
 
           <button type="submit" disabled={submitting}>
-            {submitting ? "Signing in..." : "Sign in"}
+            {submitting ? "Signing in..." : "Sign in with TOTP"}
           </button>
         </form>
 
         <p className="auth-switch">
-          Prefer a 6-digit code?{' '}
-          {onSwitchToTotp
-            ? <button type="button" className="auth-switch-btn" onClick={onSwitchToTotp}>Use TOTP sign in</button>
-            : <a href="#/sign-in/totp">Use TOTP sign in</a>
+          Want to use your password?{' '}
+          {onSwitchToPassword
+            ? <button type="button" className="auth-switch-btn" onClick={onSwitchToPassword}>Use password sign in</button>
+            : <a href="#/sign-in">Use password sign in</a>
           }
         </p>
 

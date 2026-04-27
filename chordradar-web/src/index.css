@@ -16,6 +16,8 @@
     --radius-full: 1000px;
 
     --module-cell-size: 120px;
+    --module-control-size: 28px;
+    --display-control-size: 20px;
 
     --shadow-sm: 0 0.24rem 0.6rem #1a2a3d;
     --shadow-md: 0 0.6rem 1.4rem #162436;
@@ -23,15 +25,15 @@
     --bg-main: oklch(0.88 0.005 80);
     --bg-grid: oklch(0.83 0.005 80);
 
-    --module-container-side: oklch(0.6 0.005 80);
-    --module-container-center: oklch(0.55 0.005 80);
+    --module-container-side: oklch(0.7 0.005 80);
+    --module-container-center: oklch(0.65 0.005 80);
 
     --module-surface-top: oklch(0.80 0.005 80);
-    --module-surface-bottom: oklch(0.70 0.005 80);
+    --module-surface-bottom: oklch(0.76 0.005 80);
 
-    --module-border: oklch(0.75 0.005 80 / 0.8);
+    --module-border: oklch(0.78 0.005 80 / 0.8);
 
-    --module-control-size: 28px;
+    
 
     --module-control-bg: oklch(0.7 0.005 80);
     --module-control-border: oklch(0.6 0.005 80 / 0.4);
@@ -40,13 +42,13 @@
     --module-control-color: oklch(0.88 0.005 80);
     --module-control-shine: oklch(0.95 0.005 80 / 0.5);
 
-    --module-display-top: oklch(0.3 0.005 80);
-    --module-display-bottom: oklch(0.20 0.005 80);
-    --module-display-frame: oklch(0.24 0.005 80);
-    --module-display-shine: oklch(0.9 0.005 80 / 0.8);
+    --display-top: oklch(0.3 0.005 80);
+    --display-bottom: oklch(0.20 0.005 80);
+    --display-frame: oklch(0.24 0.005 80);
+    --display-shine: oklch(0.9 0.005 80 / 0.8);
 
     --accent: oklch(0.7 0.25 200);
-    --accent-secondary: oklch(0.6 0.25 200);
+    --accent-secondary: oklch(0.55 0.25 200);
 
     --text-primary: oklch(0.2 0.005 80);
     --text-secondary: oklch(0.6 0.005 80);
@@ -71,17 +73,23 @@
 
     --module-border: oklch(0.3 0.01 220 / 0.8);
 
-    --module-button: oklch(0.35 0.01 220);
-    --module-button-border: oklch(0.2 0.01 220 / 0.6);
-    --module-button-pressed: oklch(0.25 0.01 220);
-    --module-button-shadow: oklch(0.3 0.01 220 / 0.5);
-    --module-button-color: oklch(0.75 0.01 220);
-    --module-button-shine: oklch(0.55 0.01 220 / 0.5);
+    --module-control-bg: oklch(0.32 0.01 220);
+    --module-control-border: oklch(0.19 0.01 220 / 0.6);
+    --module-control-pressed: oklch(0.2 0.01 220);
+    --module-control-shadow: oklch(0.16 0.01 220 / 0.5);
+    --module-control-color: oklch(0.75 0.01 220);
+    --module-control-shine: oklch(0.55 0.01 220 / 0.5);
 
-    --module-display-top: oklch(0.24 0.01 220);
-    --module-display-bottom: oklch(0.20 0.01 220);
-    --module-display-frame: oklch(0.22 0.01 220);
-    --module-display-shine: oklch(0.6 0.01 220 / 0.4);
+    --display-top: oklch(0.24 0.01 220);
+    --display-bottom: oklch(0.20 0.01 220);
+    --display-frame: oklch(0.22 0.01 220);
+    --display-shine: oklch(0.6 0.01 220 / 0.4);
+
+    --text-primary: oklch(0.6 0.005 220);
+    --text-secondary: oklch(0.4 0.005 220);
+
+    --glass-primary: oklch(0.6 0.005 220 / 0.5);
+    --glass-secondary: oklch(0.7 0.005 220 / 0.8);
 }
 
 html,

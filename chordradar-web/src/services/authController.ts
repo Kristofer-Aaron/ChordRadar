@@ -32,6 +32,32 @@ export type AuthResponse = {
   [key: string]: unknown;
 };
 
+export type UserProfile = {
+  id: number;
+  user_name: string;
+  first_name: string;
+  last_name: string;
+  email_address: string;
+  role: string;
+  status: string;
+  email_verified: boolean;
+  two_factor_enabled: boolean;
+};
+
+export type UserProfilePatchInput = {
+  user_name?: string;
+  first_name?: string;
+  last_name?: string;
+  email_address?: string;
+  preferences?: Record<string, unknown>;
+};
+
+export type TotpDisableInput = {
+  password?: string;
+  totpToken?: string;
+  backupCode?: string;
+};
+
 const AUTH_TOKEN_KEY = "chordradar.authToken";
 const AUTH_EMAIL_KEY = "chordradar.authEmail";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "http://localhost:3030";
@@ -235,23 +261,71 @@ export const AuthController = {
     return parseResponse<AuthResponse>(response);
   },
 
-  async totpDisable(code: string): Promise<AuthResponse> {
+  async totpDisable(input: string | TotpDisableInput): Promise<AuthResponse> {
+    const body = typeof input === "string"
+      ? { totp_token: input }
+      : {
+          ...(input.password ? { password: input.password } : {}),
+          ...(input.totpToken ? { totp_token: input.totpToken } : {}),
+          ...(input.backupCode ? { backup_code: input.backupCode } : {}),
+        };
+
     const response = await fetch(`${API_BASE_URL}/auth/totp/disable`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ token: code }),
+      body: JSON.stringify(body),
     });
 
     return parseResponse<AuthResponse>(response);
   },
 
-  async getUserByEmail(email: string): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/users/email_address/${encodeURIComponent(email)}`, {
+  async getUserByEmail(email: string): Promise<UserProfile> {
+    const response = await fetch(`${API_BASE_URL}/users/email/${encodeURIComponent(email)}`, {
       method: "GET",
       headers: authHeaders(),
     });
 
-    return parseResponse<AuthResponse>(response);
+    return parseResponse<UserProfile>(response);
+  },
+
+  async getCurrentUser(): Promise<UserProfile> {
+    const email = this.getEmail();
+    if (!email) {
+      throw {
+        status: 401,
+        message: "No authenticated email found",
+      } as ApiError;
+    }
+
+    return this.getUserByEmail(email);
+  },
+
+  async updateCurrentUser(input: UserProfilePatchInput): Promise<UserProfile> {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify(input),
+    });
+
+    const updated = await parseResponse<UserProfile>(response);
+    if (updated.email_address) {
+      this.setEmail(updated.email_address);
+    }
+    return updated;
+  },
+
+  async deleteCurrentUser(): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+
+    if (!response.ok && response.status !== 204) {
+      await parseResponse(response);
+      return;
+    }
+
+    this.clearSession();
   },
 };
 

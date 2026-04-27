@@ -3,6 +3,8 @@ import NoteUtilities from '../../utils/noteUtilities';
 import './fretboard.css';
 
 const fretCount = 21;
+const singleMarkerFrets = new Set([3, 5, 7, 9, 15, 17, 19]);
+const doubleMarkerFrets = new Set([12]);
 
 type Fretboard2Props = {
     onSelectedMidisChange?: (midis: number[]) => void;
@@ -48,6 +50,11 @@ export default function Fretboard2({ onSelectedMidisChange, externalFrets, onFre
         }));
     }
 
+    function resetSelectedFrets() {
+        onFretUserChange?.();
+        setSelectedFrets({});
+    }
+
     const activeSelectedFrets = externalFrets ?? selectedFrets;
 
     const selectedMidis = useMemo(
@@ -87,7 +94,14 @@ export default function Fretboard2({ onSelectedMidisChange, externalFrets, onFre
                                     </button>
                                     <span className='title'>CR FRETBOARD</span>
                                 </div>
-                                <div className='sliders'>
+                                <div className='top-controls'>
+                                    <button className='button reset-button' type='button' onClick={resetSelectedFrets} aria-label='Reset selected notes'>
+
+                                            <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor' aria-hidden='true'>
+                                                <path strokeLinecap='round' strokeLinejoin='round' d='M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99' />
+                                            </svg>
+                                        
+                                    </button>
                                     {/* <div>
                                         <input className='slider' type="range" id="hand-slider" defaultValue={1} min="0" max="1"/>
                                         <span className='slider-text'>L — R</span>
@@ -142,6 +156,12 @@ export default function Fretboard2({ onSelectedMidisChange, externalFrets, onFre
                                 {Array.from({ length: fretCount }).map((_, fret) => (
                                     <React.Fragment key={fret}>
                                         <div className='fretboard-column' data-fret={fret}>
+                                            {(singleMarkerFrets.has(fret) || doubleMarkerFrets.has(fret)) && (
+                                                <div className={`fret-marker${doubleMarkerFrets.has(fret) ? ' isDouble' : ''}`} aria-hidden='true'>
+                                                    <span />
+                                                    {doubleMarkerFrets.has(fret) ? <span /> : null}
+                                                </div>
+                                            )}
                                             {stringIndexes.map((stringIndex) => {
                                                 const midiNote = tuning[stringIndex] + fret;
                                                 const noteName = NoteUtilities.getNoteName(midiNote, true) ?? '';
