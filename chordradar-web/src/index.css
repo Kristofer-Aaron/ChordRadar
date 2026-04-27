@@ -57,6 +57,10 @@
 
     --glass-primary: oklch(0.6 0.005 80 / 0.5);
     --glass-secondary: oklch(0.7 0.005 80 / 0.8);
+    --glass-control: oklch(0.85 0.005 80 / 0.8);
+    --glass-control-active: oklch(0.9 0.005 80 / 0.9);
+    --glass-control-text: oklch(0.5 0.005 80);
+    
 }
 
 [data-theme="default-dark"],
@@ -86,10 +90,13 @@
     --display-shine: oklch(0.6 0.01 220 / 0.4);
 
     --text-primary: oklch(0.6 0.005 220);
-    --text-secondary: oklch(0.4 0.005 220);
+    --text-secondary: oklch(0.45 0.005 220);
 
     --glass-primary: oklch(0.6 0.005 220 / 0.5);
     --glass-secondary: oklch(0.7 0.005 220 / 0.8);
+    --glass-control: oklch(0.4 0.005 220 / 0.8);
+    --glass-control-active: oklch(0.45 0.005 220 / 0.9);
+    --glass-control-text: oklch(0.6 0.005 220);
 }
 
 html,

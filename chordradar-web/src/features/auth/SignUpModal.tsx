@@ -131,9 +131,11 @@ export default function SignUpModal({ onRegistered, onSwitchToSignIn }: SignUpMo
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
           {successMessage ? <div className="auth-success">{successMessage}</div> : null}
 
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Creating account..." : "Sign up"}
-          </button>
+          <div className="auth-form-actions">
+            <button type="submit" disabled={submitting}>
+              {submitting ? "Creating account..." : "Sign up"}
+            </button>
+          </div>
         </form>
 
         <p className="auth-switch">

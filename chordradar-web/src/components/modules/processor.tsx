@@ -12,9 +12,14 @@ const ADD_OPTIONS = ['', 'M7', 'm7', '9'] as const;
 type ProcessorTab = 'analyze' | 'explore' | 'saved';
 type Voicing = Array<number | 'x'>;
 
+export type FoundChord = {
+    name: string;
+    source: 'db' | 'algorithm';
+};
+
 type ProcessorProps = {
     mode?: 'analyze';
-    foundChords?: readonly string[];
+    foundChords?: readonly FoundChord[];
     selectedMidis?: readonly number[];
     isAuthenticated?: boolean;
     onGripSelect?: (voicing: Voicing) => void;
@@ -74,6 +79,7 @@ export default function Processor({ mode = 'analyze', foundChords = [], selected
     const isAnalyzeTab = currentTab === 'analyze';
     const isSavedTab = currentTab === 'saved';
     const isExploreTab = currentTab === 'explore';
+    const foundChordNames = useMemo(() => foundChords.map((chord) => chord.name), [foundChords]);
 
     const savedChordEntries = useMemo(
         () =>
@@ -84,7 +90,7 @@ export default function Processor({ mode = 'analyze', foundChords = [], selected
     );
     const savedChords = useMemo(() => savedChordEntries.map(([chord]) => chord), [savedChordEntries]);
 
-    const activeAnalyzeChord = foundChords.includes(selectedAnalyzeChord) ? selectedAnalyzeChord : (foundChords[0] ?? '');
+    const activeAnalyzeChord = foundChordNames.includes(selectedAnalyzeChord) ? selectedAnalyzeChord : (foundChordNames[0] ?? '');
     const activeSavedChord = savedChordEntries.some(([chord]) => chord === selectedSavedChord)
         ? selectedSavedChord
         : (savedChordEntries[0]?.[0] ?? '');
@@ -185,15 +191,15 @@ export default function Processor({ mode = 'analyze', foundChords = [], selected
                                     <div className='badge-list' id='analyze-list'>
                                         {foundChords.length > 0 ? foundChords.map((chord) => (
                                             <button
-                                                key={chord}
+                                                key={`${chord.source}:${chord.name}`}
                                                 type='button'
-                                                className={cx('badge', activeAnalyzeChord === chord && 'isSelected')}
-                                                onClick={() => setSelectedAnalyzeChord(chord)}
-                                                aria-pressed={activeAnalyzeChord === chord}
+                                                className={cx('badge', activeAnalyzeChord === chord.name && 'isSelected')}
+                                                onClick={() => setSelectedAnalyzeChord(chord.name)}
+                                                aria-pressed={activeAnalyzeChord === chord.name}
                                             >
                                                 <span className='chord-badge-content'>
-                                                    <span className='chord-badge-name'>{savedChordNames[chord]?.trim() || chord}</span>
-                                                    <ChordSourceIcon isUserSaved={Boolean(savedChordNames[chord]?.trim())} />
+                                                    <span className='chord-badge-name'>{savedChordNames[chord.name]?.trim() || chord.name}</span>
+                                                    {chord.source === 'db' ? <ChordSourceIcon isUserSaved={false} /> : null}
                                                 </span>
                                             </button>
                                         )) : (

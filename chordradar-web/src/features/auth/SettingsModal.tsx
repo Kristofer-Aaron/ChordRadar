@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import AuthController from "../../services/authController";
 import type { ApiError, UserProfile } from "../../services/authController";
 
@@ -44,10 +44,12 @@ export default function SettingsModal({ onDeleted }: SettingsModalProps) {
   const [confirmCode, setConfirmCode] = useState("");
   const [disableCode, setDisableCode] = useState("");
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const disableInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const canDeleteAccount = deleteConfirm.trim() === "DELETE";
 
   useEffect(() => {
     let active = true;
@@ -87,6 +89,52 @@ export default function SettingsModal({ onDeleted }: SettingsModalProps) {
 
   function setField<K extends keyof ProfileForm>(field: K, value: ProfileForm[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function focusDisableInput(index: number) {
+    const input = disableInputRefs.current[index];
+    if (input) input.focus();
+  }
+
+  function applyDisableDigits(startIndex: number, rawValue: string) {
+    const digits = rawValue.replace(/\D/g, "");
+    if (!digits) {
+      setDisableCode((prev) => {
+        const next = Array.from({ length: 6 }, (_, index) => prev[index] ?? "");
+        next[startIndex] = "";
+        return next.join("");
+      });
+      return;
+    }
+
+    setDisableCode((prev) => {
+      const next = Array.from({ length: 6 }, (_, index) => prev[index] ?? "");
+      for (let offset = 0; offset < digits.length && startIndex + offset < 6; offset += 1) {
+        next[startIndex + offset] = digits[offset];
+      }
+      return next.join("");
+    });
+
+    const nextIndex = Math.min(startIndex + digits.length, 5);
+    focusDisableInput(nextIndex);
+  }
+
+  function onDisableKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Backspace" && !disableCode[index] && index > 0) {
+      focusDisableInput(index - 1);
+      return;
+    }
+
+    if (event.key === "ArrowLeft" && index > 0) {
+      event.preventDefault();
+      focusDisableInput(index - 1);
+      return;
+    }
+
+    if (event.key === "ArrowRight" && index < 5) {
+      event.preventDefault();
+      focusDisableInput(index + 1);
+    }
   }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
@@ -169,19 +217,15 @@ export default function SettingsModal({ onDeleted }: SettingsModalProps) {
 
   async function disableTotp() {
     const code = disableCode.trim();
-    if (!code) {
-      setTotpError("Enter your current TOTP code or a backup code to disable.");
+    if (!/^\d{6}$/.test(code)) {
+      setTotpError("Enter your current 6-digit TOTP code to disable.");
       return;
     }
 
     try {
       setTotpBusy(true);
       setTotpError(null);
-      if (/^\d{6}$/.test(code)) {
-        await AuthController.totpDisable({ totpToken: code });
-      } else {
-        await AuthController.totpDisable({ backupCode: code });
-      }
+      await AuthController.totpDisable({ totpToken: code });
       setUser((prev) => (prev ? { ...prev, two_factor_enabled: false } : prev));
       setDisableCode("");
       setQrData(null);
@@ -263,9 +307,11 @@ export default function SettingsModal({ onDeleted }: SettingsModalProps) {
               <p className="settings-title">TOTP login</p>
               <p className="settings-help">Enable two-factor authentication with an authenticator app.</p>
             </div>
-            <button type="button" className="settings-toggle-btn" onClick={isTotpEnabled ? disableTotp : startTotpSetup} disabled={totpBusy}>
-              {isTotpEnabled ? "Disable" : "Enable"}
-            </button>
+            {!isTotpEnabled ? (
+              <button type="button" className="settings-toggle-btn" onClick={startTotpSetup} disabled={totpBusy}>
+                Enable
+              </button>
+            ) : null}
           </div>
 
           {qrData ? (
@@ -290,11 +336,33 @@ export default function SettingsModal({ onDeleted }: SettingsModalProps) {
           {isTotpEnabled ? (
             <label>
               Disable code
-              <input
-                value={disableCode}
-                onChange={(event) => setDisableCode(event.target.value)}
-                placeholder="6-digit TOTP or backup code"
-              />
+              <div className="otp-input-group" role="group" aria-label="Disable TOTP code">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <input
+                    key={`totp-disable-digit-${index}`}
+                    ref={(element) => {
+                      disableInputRefs.current[index] = element;
+                    }}
+                    className="otp-digit-input"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={1}
+                    value={disableCode[index] ?? ""}
+                    onChange={(event) => applyDisableDigits(index, event.target.value)}
+                    onKeyDown={(event) => onDisableKeyDown(index, event)}
+                    onPaste={(event) => {
+                      event.preventDefault();
+                      applyDisableDigits(index, event.clipboardData.getData("text"));
+                    }}
+                    aria-label={`Disable code digit ${index + 1}`}
+                    required
+                  />
+                ))}
+              </div>
+              <button type="button" className="settings-toggle-btn settings-disable-btn" onClick={disableTotp} disabled={totpBusy || disableCode.trim().length !== 6}>
+                {totpBusy ? "Disabling..." : "Disable"}
+              </button>
             </label>
           ) : null}
 
@@ -311,10 +379,20 @@ export default function SettingsModal({ onDeleted }: SettingsModalProps) {
           <p className="settings-help">This permanently removes your account and active tokens.</p>
           <label>
             Type DELETE to confirm
-            <input value={deleteConfirm} onChange={(event) => setDeleteConfirm(event.target.value)} placeholder="DELETE" />
+            <input
+              className="settings-input"
+              value={deleteConfirm}
+              onChange={(event) => setDeleteConfirm(event.target.value)}
+              placeholder="DELETE"
+            />
           </label>
           {deleteError ? <div className="auth-error">{deleteError}</div> : null}
-          <button type="button" className="danger-btn" onClick={deleteAccount} disabled={deleteBusy}>
+          <button
+            type="button"
+            className={`danger-btn${canDeleteAccount && !deleteBusy ? " danger-btn-ready" : ""}`}
+            onClick={deleteAccount}
+            disabled={deleteBusy || !canDeleteAccount}
+          >
             {deleteBusy ? "Deleting..." : "Delete account"}
           </button>
         </section>

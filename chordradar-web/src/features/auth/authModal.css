@@ -14,11 +14,11 @@
 
 .auth-card {
   width: 100%;
-  max-width: 460px;
+  max-width: 360px;
   padding: 1.4rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-primary);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--glass-secondary) 28%, transparent);
+  /* box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--glass-secondary) 28%, transparent); */
 }
 
 .auth-card h2 {
@@ -45,47 +45,88 @@
 
 .auth-form input {
   border: 1px solid var(--glass-primary);
-  border-radius: 10px;
-  background: oklch(0.2 0.005 80 / 0.35);
-  color: var(--glass-secondary);
+  border-radius: var(--radius-full);
+  background: var(--glass-control);
+  color: var(--glass-control-text);
   padding: 0.62rem 0.72rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+box-shadow: inset 0 0 3px 1px var(--glass-primary), 0 1px 5px rgba(0, 0, 0, 0.35);
 }
 
 .auth-form input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent) 38%, transparent);
-  background: oklch(0.22 0.005 80 / 0.52);
+  
+  background: var(--glass-control-active);
 }
 
 .auth-checkbox {
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 0.5rem;
+  cursor: pointer;
 }
 
 .auth-checkbox input {
-  width: 16px;
-  height: 16px;
+  appearance: none;
+  position: relative;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
   margin: 0;
+  padding: 0;
+  border: 1px solid var(--glass-primary);
+  border-radius: var(--radius-full);
+  background: var(--glass-control);
+  box-shadow: inset 0 0 3px 1px var(--glass-primary), 0 1px 5px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.auth-checkbox input::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: var(--radius-full);
+  background: var(--glass-control-text);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+  transform: scale(0);
+  transition: transform 0.15s ease;
+}
+
+.auth-checkbox input:checked {
+  background: var(--glass-control);
+}
+
+
+.auth-checkbox input:hover {
+  background: var(--glass-control-active);
+}
+
+
+.auth-checkbox input:checked::after {
+  transform: scale(1);
+}
+
+.auth-checkbox input:active {
+  transform: translateY(1px);
 }
 
 .auth-form button {
   border: 1px solid var(--glass-primary);
   border-radius: var(--radius-full);
   padding: 0.7rem 1rem;
-  background: oklch(0.3 0.005 80 / 0.45);
+  background: var(--glass-control);
   box-shadow: inset 0 0 3px 1px var(--glass-primary), 0 1px 5px rgba(0, 0, 0, 0.35);
-  color: var(--glass-secondary);
+  color: var(--glass-control-text);
   font-weight: 700;
   cursor: pointer;
   transition: border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
 }
 
 .auth-form button:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+    background-color: var(--glass-control-active);
 }
 
 .auth-form button:active:not(:disabled) {
@@ -97,11 +138,39 @@
   cursor: not-allowed;
 }
 
+.auth-form-actions {
+  margin-top: 0.3rem;
+  padding-top: 20px;
+  border-top: 2px solid color-mix(in oklch, var(--glass-primary) 65%, transparent);
+  display: grid;
+}
+
+.auth-form-actions > button {
+  width: 100%;
+}
+
+.otp-input-group {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.otp-digit-input {
+  min-width: 0;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  padding: 0.58rem 0;
+}
+
 .auth-error {
-  border-radius: 10px;
-  background: oklch(0.43 0.17 28 / 0.18);
-  border: 1px solid oklch(0.56 0.16 28 / 0.55);
-  color: oklch(0.94 0.03 28);
+  border-radius: var(--radius-full);
+  background: oklch(0.53 0.2 28 / 0.55);
+  border: 1px solid oklch(0.62 0.2 28 / 0.9);
+  box-shadow: inset 0 0 3px 1px oklch(0.6 0.18 28 / 0.45), 0 1px 5px rgba(0, 0, 0, 0.35);
+  color: oklch(0.95 0.04 28);
   padding: 0.55rem 0.7rem;
 }
 
@@ -153,7 +222,7 @@
 .settings-section {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid color-mix(in oklch, var(--glass-primary) 65%, transparent);
+  border-top: 2px solid color-mix(in oklch, var(--glass-primary) 65%, transparent);
   display: grid;
   gap: 0.75rem;
   text-align: left;
@@ -178,14 +247,51 @@
   font-size: 0.9rem;
 }
 
+.settings-section label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+  color: var(--glass-secondary);
+}
+
+.settings-input,
+.settings-section input {
+  border: 1px solid var(--glass-primary);
+  border-radius: var(--radius-full);
+  background: var(--glass-control);
+  color: var(--glass-control-text);
+  padding: 0.62rem 0.72rem;
+  box-shadow: inset 0 0 3px 1px var(--glass-primary), 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+
+.settings-section input:focus {
+  outline: none;
+  background: var(--glass-control-active);
+}
+
 .settings-toggle-btn {
   border: 1px solid var(--glass-primary);
   border-radius: var(--radius-full);
   padding: 0.42rem 0.85rem;
-  background: oklch(0.3 0.005 80 / 0.45);
-  color: var(--glass-secondary);
+  background: var(--glass-control);
+  box-shadow: inset 0 0 3px 1px var(--glass-primary), 0 1px 5px rgba(0, 0, 0, 0.35);
+  color: var(--glass-control-text);
   font-weight: 600;
   cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.settings-toggle-btn:hover:not(:disabled) {
+  background: var(--glass-control-active);
+}
+
+.settings-toggle-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.settings-disable-btn {
+  margin-top: 0.45rem;
+  justify-self: start;
 }
 
 .totp-setup {
@@ -202,7 +308,7 @@
 }
 
 .danger-zone {
-  border-top-color: color-mix(in oklch, oklch(0.56 0.16 28) 45%, transparent);
+  border-top-color: color-mix(in oklch, var(--glass-primary) 45%, transparent);
 }
 
 .danger-btn {
@@ -213,6 +319,16 @@
   color: oklch(0.94 0.03 28);
   font-weight: 700;
   cursor: pointer;
+}
+
+.danger-btn-ready {
+  border-color: oklch(0.64 0.18 28 / 0.95);
+  background: oklch(0.5 0.19 28 / 0.4);
+  box-shadow: inset 0 0 3px 1px oklch(0.64 0.18 28 / 0.35), 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+
+.danger-btn-ready:hover:not(:disabled) {
+  background: oklch(0.53 0.2 28 / 0.46);
 }
 
 .danger-btn:disabled,
@@ -265,7 +381,7 @@
   color: var(--glass-secondary);
   cursor: pointer;
   z-index: 1;
-  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  transition: transform 0.12s ease;
 }
 
 .auth-modal-close:hover {

@@ -185,7 +185,7 @@ export const AuthController = {
         last_name: input.lastName,
         email_address: input.emailAddress,
         password: input.password,
-        preferences: input.preferences,
+        preferences: input.preferences ?? {},
       }),
     });
 

@@ -158,7 +158,7 @@ export const AuthController = {
      await TokenModel.insertUserToken(userId, emailToken, 'email_verification', now, expiresAt);
 
      //Send verification email
-      const verificationLink = `http://${process.env.HOST}:${process.env.PORT}/auth/verify?token="${emailToken}"`;
+      const verificationLink = `http://${process.env.HOST}:${process.env.PORT}/auth/verify?token=${emailToken}`;
       await sendEmail(
         email_address,
         "Verify your email",
@@ -207,10 +207,14 @@ export const AuthController = {
       const apiExpiresAt = new Date(now.getTime() + apiTokenExpiration * 1000);
       await TokenModel.insertUserToken(user_id, apiToken, 'api_access', now, apiExpiresAt)
 
-      return res.json({
-        message: "Email verified successfully",
-        token: apiToken,
-      });
+      const frontendBaseUrl = (process.env.FRONTEND_URL).replace(/\/$/, '');
+      const user = await UserModel.findById(user_id);
+      const redirectParams = new URLSearchParams({ token: apiToken });
+      if (user?.email_address) {
+        redirectParams.set('email', user.email_address);
+      }
+
+      return res.redirect(302, `${frontendBaseUrl}/#/auth/callback?${redirectParams.toString()}`);
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }

@@ -77,9 +77,11 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp, onSwitchToTo
 
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
 
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Signing in..." : "Sign in"}
-          </button>
+          <div className="auth-form-actions">
+            <button type="submit" disabled={submitting}>
+              {submitting ? "Signing in..." : "Sign in"}
+            </button>
+          </div>
         </form>
 
         <p className="auth-switch">
@@ -91,7 +93,7 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp, onSwitchToTo
         </p>
 
         <p className="auth-switch">
-          Need an account?{' '}
+          Don't have an account?{' '}
           {onSwitchToSignUp
             ? <button type="button" className="auth-switch-btn" onClick={onSwitchToSignUp}>Create one</button>
             : <a href="#/sign-up">Create one</a>
