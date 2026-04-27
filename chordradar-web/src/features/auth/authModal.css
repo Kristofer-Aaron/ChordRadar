@@ -59,10 +59,21 @@ box-shadow: inset 0 0 3px 1px var(--glass-primary), 0 1px 5px rgba(0, 0, 0, 0.35
 }
 
 .auth-checkbox {
-  grid-template-columns: auto 1fr;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
   cursor: pointer;
+}
+
+.auth-form label.auth-checkbox {
+  display: flex;
+}
+
+.auth-remember-section {
+  margin-top: 0.2rem;
+  padding-top: 0.8rem;
+  border-top: 2px solid color-mix(in oklch, var(--glass-primary) 65%, transparent);
 }
 
 .auth-checkbox input {

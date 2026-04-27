@@ -305,7 +305,7 @@ export default function SettingsModal({ onDeleted }: SettingsModalProps) {
           <div className="settings-row">
             <div>
               <p className="settings-title">TOTP login</p>
-              <p className="settings-help">Enable two-factor authentication with an authenticator app.</p>
+              <p className="settings-help">Enable TOTP authentication with an authenticator app.</p>
             </div>
             {!isTotpEnabled ? (
               <button type="button" className="settings-toggle-btn" onClick={startTotpSetup} disabled={totpBusy}>

@@ -13,6 +13,7 @@ export type LoginInput = {
 export type LoginTotpInput = {
   emailAddress: string;
   totpToken: string;
+  rememberMe?: boolean;
 };
 
 export type RegisterInput = {
@@ -152,7 +153,8 @@ export const AuthController = {
   },
 
   async loginTotp(input: LoginTotpInput): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/login/totp`, {
+    const query = input.rememberMe ? "?remember-me=true" : "";
+    const response = await fetch(`${API_BASE_URL}/auth/login/totp${query}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

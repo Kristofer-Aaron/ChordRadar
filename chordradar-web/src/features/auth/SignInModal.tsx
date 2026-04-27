@@ -66,13 +66,13 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp, onSwitchToTo
             />
           </label>
 
-          <label className="auth-checkbox">
+          <label className="auth-checkbox auth-remember-section">
+            <span>Remember me</span>
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(event) => setRememberMe(event.target.checked)}
             />
-            Remember me
           </label>
 
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
@@ -85,10 +85,10 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp, onSwitchToTo
         </form>
 
         <p className="auth-switch">
-          Prefer a 6-digit code?{' '}
+          TOTP enabled?{' '}
           {onSwitchToTotp
-            ? <button type="button" className="auth-switch-btn" onClick={onSwitchToTotp}>Use TOTP sign in</button>
-            : <a href="#/sign-in/totp">Use TOTP sign in</a>
+            ? <button type="button" className="auth-switch-btn" onClick={onSwitchToTotp}>Sign in with authenticator app</button>
+            : <a href="#/sign-in/totp">Sign in with authenticator app</a>
           }
         </p>
 

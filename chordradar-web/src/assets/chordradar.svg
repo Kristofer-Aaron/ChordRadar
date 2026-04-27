@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Background 8th note -->
+  <g fill="#00848b">
+    <!-- Stem -->
+    <rect x="245" y="120" width="24" height="250" rx="6"/>
+    
+    <!-- Note head -->
+    <ellipse cx="198" cy="380" rx="68" ry="52" transform="rotate(-28 190 365)"/>
+    
+    <!-- Flag -->
+    <path d="
+      M265 120
+      C320 200, 400 200, 320 320
+      C360 245, 332 220, 280 190
+      L270 195
+      Z"/>
+  </g>
+
+  <!-- Radar graphic -->
+  <g stroke="#00b7c0" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="256" cy="256" r="70"/>
+    <circle cx="256" cy="256" r="150"/>
+    <circle cx="256" cy="256" r="230"/>
+    <line x1="256" y1="256" x2="418.6" y2="93.4"/>
+  </g>
+
+  <!-- Center dot -->
+  <circle cx="256" cy="256" r="18" fill="#00b7c0"/>
+</svg>

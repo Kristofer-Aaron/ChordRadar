@@ -12,6 +12,7 @@ type SignInTotpPageProps = {
 export default function SignInTotpPage({ onSignedIn, onSwitchToPassword, onSwitchToSignUp }: SignInTotpPageProps) {
   const [emailAddress, setEmailAddress] = useState(AuthController.getEmail() ?? "");
   const [totpToken, setTotpToken] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const totpInputRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -71,6 +72,7 @@ export default function SignInTotpPage({ onSignedIn, onSwitchToPassword, onSwitc
       await AuthController.loginTotp({
         emailAddress,
         totpToken,
+        rememberMe,
       });
       onSignedIn();
       window.location.hash = "#/";
@@ -85,8 +87,8 @@ export default function SignInTotpPage({ onSignedIn, onSwitchToPassword, onSwitc
   return (
     <section className="auth-shell">
       <div className="auth-card glass">
-        <h2>TOTP sign in</h2>
-        <p className="auth-muted">Use your email and 6-digit authenticator code.</p>
+        <h2>Sign in</h2>
+        <p className="auth-muted">Sign in with TOTP authenticator code.</p>
 
         <form onSubmit={onSubmit} className="auth-form">
           <label>
@@ -101,8 +103,8 @@ export default function SignInTotpPage({ onSignedIn, onSwitchToPassword, onSwitc
           </label>
 
           <label>
-            TOTP code
-            <div className="otp-input-group" role="group" aria-label="TOTP code">
+            Authenticator code
+            <div className="otp-input-group" role="group" aria-label="Authenticator code">
               {Array.from({ length: 6 }, (_, index) => (
                 <input
                   key={`totp-signin-digit-${index}`}
@@ -128,6 +130,15 @@ export default function SignInTotpPage({ onSignedIn, onSwitchToPassword, onSwitc
             </div>
           </label>
 
+          <label className="auth-checkbox auth-remember-section">
+            <span>Remember me</span>
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+            />
+          </label>
+
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
 
           <div className="auth-form-actions">
@@ -138,10 +149,10 @@ export default function SignInTotpPage({ onSignedIn, onSwitchToPassword, onSwitc
         </form>
 
         <p className="auth-switch">
-          Want to use your password?{' '}
+          TOTP not working?{' '}
           {onSwitchToPassword
-            ? <button type="button" className="auth-switch-btn" onClick={onSwitchToPassword}>Use password sign in</button>
-            : <a href="#/sign-in">Use password sign in</a>
+            ? <button type="button" className="auth-switch-btn" onClick={onSwitchToPassword}>Use password to sign in</button>
+            : <a href="#/sign-in">Use password to sign in</a>
           }
         </p>
 
