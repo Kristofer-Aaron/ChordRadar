@@ -13,6 +13,18 @@ export const ChordController = {
 			return res.json(rows);
 		  } catch (err) { return res.status(500).json({ error: err.message }); }
 	},
+
+	async getAllGui(req, res) {
+		try {
+			// Parse optional fields to display value instead of id (notation, grip, tuning)
+			let fields = {};
+			try { fields = req.query.fields ? JSON.parse(req.query.fields) : {}; }
+			catch { fields = {}; }
+	  
+			const rows = await ChordModel.findAllGui({ fields });
+			return res.json(rows);
+		  } catch (err) { return res.status(500).json({ error: err.message }); }
+	},
 	
 	async getById(req, res) {
 		try {

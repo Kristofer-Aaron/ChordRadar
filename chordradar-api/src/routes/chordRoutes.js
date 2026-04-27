@@ -8,6 +8,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/user-chords', authenticate, requireActiveToken, ChordController.getUserChords);
+router.get('/gui', authenticate, requireActiveToken, requireAdmin, ChordController.getAllGui);
 router.get('/', ChordController.getAll);
 router.get('/:id', validate({ params: idParamSchema}), ChordController.getById);
 router.get('/:selector/:selectorValue/tuning/:tuningValue', validate({ params: getBySelectorParamsSchema }), ChordController.getBySelector);
