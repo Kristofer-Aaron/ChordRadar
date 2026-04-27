@@ -89,6 +89,57 @@ const UserController = {
     }
   },
 
+  async patchSelf(req, res) {
+    try {
+      const userId = Number(req.user?.id);
+      if (!Number.isFinite(userId) || userId <= 0) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const existing = await UserModel.findById(userId);
+      if (!existing) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const partial = req.validated?.body ?? req.validated ?? req.body ?? {};
+      const updated = await UserModel.patch(userId, partial);
+
+      return res.json({
+        id: updated.id,
+        user_name: updated.user_name,
+        first_name: updated.first_name,
+        last_name: updated.last_name,
+        email_address: updated.email_address,
+        role: updated.role,
+        status: updated.status,
+        email_verified: !!updated.email_verified,
+        two_factor_enabled: !!updated.two_factor_enabled,
+      });
+    } catch (err) {
+      const status = err.status ?? 500;
+      return res.status(status).json({ error: err.message });
+    }
+  },
+
+  async removeSelf(req, res) {
+    try {
+      const userId = Number(req.user?.id);
+      if (!Number.isFinite(userId) || userId <= 0) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const existing = await UserModel.findById(userId);
+      if (!existing) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      await UserModel.remove(userId);
+      return res.status(204).send();
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  },
+
 async patch(req, res) {
   try {
     const idStr = String(req.validated?.params?.id ?? req.params.id ?? "").trim();

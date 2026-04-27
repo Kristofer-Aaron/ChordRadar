@@ -9,9 +9,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { startSuedeTextureRenderer } from './utils/suedeTextureRenderer'
+// import { startSuedeTextureRenderer } from './utils/suedeTextureRenderer'
 
-startSuedeTextureRenderer()
+// startSuedeTextureRenderer()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

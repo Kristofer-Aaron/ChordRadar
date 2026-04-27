@@ -1,101 +1,110 @@
 
-/**
- * Global stylesheet for ChordRadar web app.
- * Defines the design system variables (colors, radii, shadows, fonts),
- * typography, theme-aware CSS custom properties, and base element styles.
- * Light/dark mode is automatically set via prefers-color-scheme media query.
- */
+@font-face {
+  font-family: 'Rubik';
+  src: url('./assets/fonts/rubik/Rubik-VariableFont_wght.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
-  --text: #fff;
-  --text-h: #08060d;
-  --bg: transparent;
-  --app-shell-overlay: rgba(255, 255, 255, 0.42);
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #fff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    --font-rubik: 'Rubik', sans-serif;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --radius-full: 1000px;
 
-  /* Design System: Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-full: 1000px;
+    --module-cell-size: 120px;
+    --module-control-size: 28px;
+    --display-control-size: 20px;
 
-  /* Design System: Colors - Cyan Accent */
-  --color-cyan-primary: rgba(94, 220, 246, 0.98);
-  --color-cyan-secondary: rgba(43, 189, 224, 0.98);
-  --color-cyan-accent: rgba(94, 220, 246, 0.92);
-  --color-cyan-text-on-accent: rgba(4, 19, 27, 0.98);
-  --color-cyan-shadow: rgba(57, 186, 217, 0.24);
-  --color-cyan-border-accent: rgba(13, 56, 67, 0.42);
+    --shadow-sm: 0 0.24rem 0.6rem #1a2a3d;
+    --shadow-md: 0 0.6rem 1.4rem #162436;
 
-  /* Design System: Colors - Borders & Dividers (Light) */
-  --color-border-light-10: rgba(255, 255, 255, 0.1);
-  --color-border-light-20: rgba(255, 255, 255, 0.2);
-  --color-border-light-22: rgba(255, 255, 255, 0.22);
-  --color-border-light-26: rgba(255, 255, 255, 0.26);
-  --color-border-light-30: rgba(255, 255, 255, 0.3);
+    --bg-main: oklch(0.88 0.005 80);
+    --bg-grid: oklch(0.83 0.005 80);
 
-  /* Design System: Colors - Backgrounds & Overlays (Dark) */
-  --color-bg-overlay-20: rgba(0, 0, 0, 0.2);
-  --color-bg-overlay-22: rgba(0, 0, 0, 0.22);
-  --color-bg-overlay-26: rgba(0, 0, 0, 0.26);
-  --color-bg-overlay-28: rgba(0, 0, 0, 0.28);
-  --color-bg-overlay-30: rgba(0, 0, 0, 0.3);
-  --color-bg-overlay-35: rgba(0, 0, 0, 0.35);
+    --module-container-side: oklch(0.7 0.005 80);
+    --module-container-center: oklch(0.65 0.005 80);
 
-  /* Design System: Colors - Text */
-  --color-text-light: rgba(237, 243, 250, 0.9);
+    --module-surface-top: oklch(0.80 0.005 80);
+    --module-surface-bottom: oklch(0.76 0.005 80);
 
-  /* Design System: Shadows */
-  --shadow-sm: 0 0.35rem 0.8rem rgba(57, 186, 217, 0.24);
-  --shadow-md: 0 0.75rem 2rem rgba(0, 0, 0, 0.24);
-  --shadow-lg: 0 0.7rem 1.8rem rgba(0, 0, 0, 0.24);
+    --module-border: oklch(0.78 0.005 80 / 0.8);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+    --module-control-bg: oklch(0.7 0.005 80);
+    --module-control-border: oklch(0.6 0.005 80 / 0.4);
+    --module-control-pressed: oklch(0.55 0.005 80);
+    --module-control-shadow: oklch(0.5 0.005 80 / 0.5);
+    --module-control-color: oklch(0.88 0.005 80);
+    --module-control-shine: oklch(0.95 0.005 80 / 0.5);
+
+    --display-top: oklch(0.3 0.005 80);
+    --display-bottom: oklch(0.20 0.005 80);
+    --display-frame: oklch(0.24 0.005 80);
+    --display-shine: oklch(0.9 0.005 80 / 0.8);
+
+    --accent: oklch(0.7 0.25 200);
+    --accent-secondary: oklch(0.55 0.25 200);
+
+    --text-primary: oklch(0.2 0.005 80);
+    --text-secondary: oklch(0.6 0.005 80);
+
+    --border: oklch(0.2 0.005 80);
+
+    --glass-primary: oklch(0.6 0.005 80 / 0.5);
+    --glass-secondary: oklch(0.7 0.005 80 / 0.8);
+    --glass-control: oklch(0.85 0.005 80 / 0.8);
+    --glass-control-active: oklch(0.9 0.005 80 / 0.9);
+    --glass-control-text: oklch(0.5 0.005 80);
+    
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: transparent;
-    --app-shell-overlay: rgba(0, 0, 0, 0.1);
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #fff;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+[data-theme="default-dark"],
+[data-theme="dark"] {
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+    --bg-main: oklch(0.32 0.01 220);
+    --bg-grid: oklch(0.37 0.01 220);
+
+    --module-container-side: oklch(0.25 0.01 220);
+    --module-container-center: oklch(0.23 0.01 220);
+
+    --module-surface-top: oklch(0.3 0.01 220);
+    --module-surface-bottom: oklch(0.25 0.01 220);
+
+    --module-border: oklch(0.3 0.01 220 / 0.8);
+
+    --module-control-bg: oklch(0.32 0.01 220);
+    --module-control-border: oklch(0.19 0.01 220 / 0.6);
+    --module-control-pressed: oklch(0.2 0.01 220);
+    --module-control-shadow: oklch(0.16 0.01 220 / 0.5);
+    --module-control-color: oklch(0.75 0.01 220);
+    --module-control-shine: oklch(0.55 0.01 220 / 0.5);
+
+    --display-top: oklch(0.24 0.01 220);
+    --display-bottom: oklch(0.20 0.01 220);
+    --display-frame: oklch(0.22 0.01 220);
+    --display-shine: oklch(0.6 0.01 220 / 0.4);
+
+    --text-primary: oklch(0.6 0.005 220);
+    --text-secondary: oklch(0.45 0.005 220);
+
+    --glass-primary: oklch(0.6 0.005 220 / 0.5);
+    --glass-secondary: oklch(0.7 0.005 220 / 0.8);
+    --glass-control: oklch(0.4 0.005 220 / 0.8);
+    --glass-control-active: oklch(0.45 0.005 220 / 0.9);
+    --glass-control-text: oklch(0.6 0.005 220);
 }
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
 
 #root {
   max-width: 100%;
@@ -105,54 +114,11 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  background: var(--app-shell-overlay);
 }
-
-body {
-  margin: 0;
-  background: transparent;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: var(--radius-sm);
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
-}
+/* 
+@media (max-width: 600px) {
+    :root {
+        --module-cell-size: 80px;
+        --module-control-size: 14px;
+    }
+} */

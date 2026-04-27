@@ -58,7 +58,7 @@ export default function SignUpModal({ onRegistered, onSwitchToSignIn }: SignUpMo
 
   return (
     <section className="auth-shell">
-      <div className="auth-card">
+      <div className="auth-card glass">
         <h2>Create account</h2>
         <p className="auth-muted">Join ChordRadar and save your progress.</p>
 
@@ -131,9 +131,11 @@ export default function SignUpModal({ onRegistered, onSwitchToSignIn }: SignUpMo
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
           {successMessage ? <div className="auth-success">{successMessage}</div> : null}
 
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Creating account..." : "Sign up"}
-          </button>
+          <div className="auth-form-actions">
+            <button type="submit" disabled={submitting}>
+              {submitting ? "Creating account..." : "Sign up"}
+            </button>
+          </div>
         </form>
 
         <p className="auth-switch">

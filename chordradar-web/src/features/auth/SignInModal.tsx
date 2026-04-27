@@ -6,9 +6,10 @@ import type { ApiError } from "../../services/authController";
 type SignInModalProps = {
   onSignedIn: () => void;
   onSwitchToSignUp?: () => void;
+  onSwitchToTotp?: () => void;
 };
 
-export default function SignInModal({ onSignedIn, onSwitchToSignUp }: SignInModalProps) {
+export default function SignInModal({ onSignedIn, onSwitchToSignUp, onSwitchToTotp }: SignInModalProps) {
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -38,7 +39,7 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp }: SignInModa
 
   return (
     <section className="auth-shell">
-      <div className="auth-card">
+      <div className="auth-card glass">
         <h2>Sign in</h2>
         <p className="auth-muted">Use your ChordRadar account to continue.</p>
 
@@ -76,13 +77,23 @@ export default function SignInModal({ onSignedIn, onSwitchToSignUp }: SignInModa
 
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
 
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Signing in..." : "Sign in"}
-          </button>
+          <div className="auth-form-actions">
+            <button type="submit" disabled={submitting}>
+              {submitting ? "Signing in..." : "Sign in"}
+            </button>
+          </div>
         </form>
 
         <p className="auth-switch">
-          Need an account?{' '}
+          Prefer a 6-digit code?{' '}
+          {onSwitchToTotp
+            ? <button type="button" className="auth-switch-btn" onClick={onSwitchToTotp}>Use TOTP sign in</button>
+            : <a href="#/sign-in/totp">Use TOTP sign in</a>
+          }
+        </p>
+
+        <p className="auth-switch">
+          Don't have an account?{' '}
           {onSwitchToSignUp
             ? <button type="button" className="auth-switch-btn" onClick={onSwitchToSignUp}>Create one</button>
             : <a href="#/sign-up">Create one</a>
