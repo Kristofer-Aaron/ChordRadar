@@ -17,9 +17,6 @@ const app = express();
 const openapiSpec = YAML.load("./docs/openapi.yaml");
 
 const allowedOrigins = [
-    'http://127.0.01',
-    'http://localhost',
-    'http://localhost:80',
     'http://localhost:5173'
   ];
 

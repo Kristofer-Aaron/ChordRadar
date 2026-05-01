@@ -27,3 +27,5 @@ dist-ssr
 chordradar-api/.env
 chordradar-api/.db_backups/*
 chordradar-api/node_modules/*
+chordradar-web/.env.local
+chordradar-web/node_modules/*

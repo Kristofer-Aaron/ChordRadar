@@ -1,10 +1,7 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 import app from "./app.js";
 
-const PORT = process.env.PORT || 3030;
+const PORT = process.env.BACKEND_URL.split(':')[2] || 3030;
 
 app.listen(PORT, () => {
-	console.log(`Server running on port ${PORT}`);
+	console.log(` - Backend: @ ${process.env.BACKEND_URL}\n - Database @ ${process.env.DB_HOST}\n - Frontend @ ${process.env.FRONTEND_URL}`);
 });

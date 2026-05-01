@@ -1,14 +1,15 @@
 openapi: 3.0.3
 info:
-  title: ChordRadar Node.js API
+  title: ChordRadar API
+  description: REST API for ChordRadar - a chord management and discovery platform
   version: 1.0.0
-  description: >
-    API documentation representing the current codebase.
-    Includes /auth, /users, /api/chords, /api/notations, /api/tunings, and /api/grips.
+  contact:
+    name: ChordRadar Team
 
 servers:
-  - url: http://localhost:3030
-    description: Local dev server
+  
+  - url: http://192.168.1.11:3030
+    description: Local network
 
 tags:
   - name: Auth

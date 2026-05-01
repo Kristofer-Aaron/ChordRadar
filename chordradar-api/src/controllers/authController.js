@@ -158,7 +158,7 @@ export const AuthController = {
      await TokenModel.insertUserToken(userId, emailToken, 'email_verification', now, expiresAt);
 
      //Send verification email
-      const verificationLink = `http://${process.env.HOST}:${process.env.PORT}/auth/verify?token=${emailToken}`;
+      const verificationLink = `${process.env.BACKEND_URL}/auth/verify?token=${emailToken}`;
       await sendEmail(
         email_address,
         "Verify your email",
