@@ -10,9 +10,9 @@ export const ChordModel = {
                    JOIN notations ON chords.notation_id = notations.id
                    JOIN tunings   ON chords.tuning_id   = tunings.id
                    JOIN grips     ON chords.grip_id     = grips.id
-                   WHERE chords.id < ${Number(process.env.DEFAULT_CHORDS_NUMBER) + 1}`;
+                   WHERE chords.id <= (?)`;
 
-    const [rows] = await pool.query(query);
+    const [rows] = await pool.query(query, [Number(process.env.DEFAULT_CHORDS_NUMBER) || 20]);
     return rows;
   },
 

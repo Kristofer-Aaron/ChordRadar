@@ -7,9 +7,11 @@ info:
     name: ChordRadar Team
 
 servers:
-  
-  - url: http://192.168.1.11:3030
+  - url: http://192.168.1.14:3003
     description: Local network
+    
+  - url: http://localhost:3003
+    description: Local development
 
 tags:
   - name: Auth

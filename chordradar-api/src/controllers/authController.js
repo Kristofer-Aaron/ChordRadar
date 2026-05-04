@@ -207,14 +207,22 @@ export const AuthController = {
       const apiExpiresAt = new Date(now.getTime() + apiTokenExpiration * 1000);
       await TokenModel.insertUserToken(user_id, apiToken, 'api_access', now, apiExpiresAt)
 
-      const frontendBaseUrl = (process.env.FRONTEND_URL).replace(/\/$/, '');
+      const frontendBaseUrl = (process.env.FRONTEND_URL || 'http://192.168.1.14:3003').replace(/\/$/, '');
       const user = await UserModel.findById(user_id);
       const redirectParams = new URLSearchParams({ token: apiToken });
       if (user?.email_address) {
         redirectParams.set('email', user.email_address);
       }
 
-      return res.redirect(302, `${frontendBaseUrl}/#/auth/callback?${redirectParams.toString()}`);
+      const redirectUrl = `${frontendBaseUrl}/#/auth/callback?${redirectParams.toString()}`;
+      if (typeof res.redirect === 'function') {
+        return res.redirect(302, redirectUrl);
+      }
+
+      return res.json({
+        message: 'Email verified successfully',
+        token: apiToken,
+      });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }

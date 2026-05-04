@@ -28,13 +28,13 @@ export async function authenticate(req, res, next) {
 export async function requireActiveToken(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1];
   try {
-   const rows = await TokenModel.findTokenString(token, 'api_access');
-    if (rows == null || rows.user_id !== req.user?.id) {
+    const row = await TokenModel.findTokenString(token, 'api_access');
+    if (!row || row.user_id !== req.user?.id || new Date() > row.expires_at) {
       return res.status(401).json({ error: "Invalid or expired token" });
     }
     next();
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: 'Token validation failed' });
   }
 }
 

@@ -1,4 +1,3 @@
-
 import QRCode from 'qrcode';
 
 /**
