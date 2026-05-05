@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Content Include="..\ChordRadarAdmin.Core\chordradar.svg" Link="Assets\chordradar.svg" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChordRadarAdmin.ViewModels\ChordRadarAdmin.ViewModels.csproj" />
+    <ProjectReference Include="..\ChordRadarAdmin.Core\ChordRadarAdmin.Core.csproj" />
+    <PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>..\ChordRadarAdmin.Core\chordradar.ico</ApplicationIcon>
+  </PropertyGroup>
+
+</Project>

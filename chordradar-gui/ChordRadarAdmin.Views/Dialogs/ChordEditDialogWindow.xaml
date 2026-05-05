@@ -1,0 +1,35 @@
+<Window x:Class="ChordRadarAdmin.Views.Dialogs.ChordEditDialogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Chord Editor"
+        Width="420"
+        Height="420"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource BackgroundBrush}"
+        Foreground="{DynamicResource ForegroundBrush}">
+    <Border Padding="20">
+        <StackPanel>
+            <TextBlock Text="Chord Editor"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Margin="0,0,0,16" />
+
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" Margin="0,0,0,8" />
+
+            <TextBlock Text="Notation" Margin="0,0,0,4" />
+            <TextBox Text="{Binding Notation, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,12" />
+
+            <TextBlock Text="Tuning" Margin="0,0,0,4" />
+            <TextBox Text="{Binding Tuning, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,12" />
+
+            <TextBlock Text="Grip" Margin="0,0,0,4" />
+            <TextBox Text="{Binding Grip, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,16" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Save" Command="{Binding SaveCommand}" Style="{StaticResource ButtonStyle}" Margin="0,0,8,0" />
+                <Button Content="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource ButtonStyle}" Background="{DynamicResource ErrorBrush}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

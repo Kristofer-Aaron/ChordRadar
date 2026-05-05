@@ -1,0 +1,40 @@
+﻿<Application x:Class="ChordRadarAdmin.Views.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vmChords="clr-namespace:ChordRadarAdmin.ViewModels.Chords;assembly=ChordRadarAdmin.ViewModels"
+             xmlns:vmGrips="clr-namespace:ChordRadarAdmin.ViewModels.Grips;assembly=ChordRadarAdmin.ViewModels"
+             xmlns:vmTunings="clr-namespace:ChordRadarAdmin.ViewModels.Tunings;assembly=ChordRadarAdmin.ViewModels"
+             xmlns:vmNotations="clr-namespace:ChordRadarAdmin.ViewModels.Notations;assembly=ChordRadarAdmin.ViewModels"
+             xmlns:vmUsers="clr-namespace:ChordRadarAdmin.ViewModels.Users;assembly=ChordRadarAdmin.ViewModels"
+             xmlns:pages="clr-namespace:ChordRadarAdmin.Views.Pages"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/SharedStyles.xaml" />
+                <ResourceDictionary Source="Themes/Light.xaml" />
+                <ResourceDictionary Source="Controls/NavButtonStyle.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <DataTemplate DataType="{x:Type vmChords:ChordListViewModel}">
+                <pages:ChordsPage />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vmGrips:GripListViewModel}">
+                <pages:GripsPage />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vmTunings:TuningListViewModel}">
+                <pages:TuningsPage />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vmNotations:NotationListViewModel}">
+                <pages:NotationsPage />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vmUsers:UserListViewModel}">
+                <pages:UsersPage />
+            </DataTemplate>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
